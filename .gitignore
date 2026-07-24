@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+*.pyc
+
+# Generated run logs (regenerate with --dry-run)
+dryrun-log.txt
+dryrun-log.original.txt
