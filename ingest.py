@@ -4,19 +4,19 @@ Split flatbed scans containing multiple printed photos.
 
 Features:
 - Input files are read-only.
-- Detects multiple photos per scan.
-- Deskews photos rotated by a few degrees.
-- Applies a perspective crop.
+- Detects multiple photos per scan and splits them into separate files.
+- Photos are kept whole and uncropped: each output is an axis-aligned slice of
+  the source, not a tight or deskewed crop.
 - Optionally chooses 0/90/180/270-degree orientation using face detection.
 - Writes lossless PNG output.
 - Names output from the scan filename plus "_pNN".
 - Can produce annotated debug images.
 
 Example:
-    python split_scanned_photos.py ~/Scans ~/Photos/split --debug
+    python ingest.py ~/Scans ~/Photos/split --debug
 
 Dependencies:
-    python -m pip install opencv-python numpy
+    python -m pip install "opencv-python>=5" numpy
 """
 
 from __future__ import annotations
@@ -336,24 +336,6 @@ def build_detection_mask(
     return core
 
 
-def order_quad_points(points: np.ndarray) -> np.ndarray:
-    """
-    Order four points as top-left, top-right, bottom-right, bottom-left.
-    """
-    points = np.asarray(points, dtype=np.float32).reshape(4, 2)
-
-    ordered = np.zeros((4, 2), dtype=np.float32)
-    coordinate_sum = points.sum(axis=1)
-    coordinate_difference = np.diff(points, axis=1).reshape(-1)
-
-    ordered[0] = points[np.argmin(coordinate_sum)]
-    ordered[2] = points[np.argmax(coordinate_sum)]
-    ordered[1] = points[np.argmin(coordinate_difference)]
-    ordered[3] = points[np.argmax(coordinate_difference)]
-
-    return ordered
-
-
 def quad_area(points: np.ndarray) -> float:
     return abs(float(cv2.contourArea(points.astype(np.float32))))
 
@@ -377,72 +359,64 @@ def find_photo_detections(
         connectivity=8,
     )
 
-    candidates: list[Detection] = []
+    # Axis-aligned bounding boxes, in working-image coordinates. We deliberately
+    # avoid minAreaRect: fitting a rotated rectangle to an irregular or partial
+    # component produces skewed slivers over sub-regions of a single photo. The
+    # goal here is only to split the scan into whole, uncropped photos, so an
+    # upright box that keeps the full print (border included) is what we want.
+    boxes: list[tuple[float, float, float, float]] = []
 
     for label in range(1, component_count):
         component_area = float(stats[label, cv2.CC_STAT_AREA])
-
-        # A quick pre-filter before the more expensive rectangle fit.
         if component_area / image_area < minimum_area_fraction * 0.5:
             continue
 
-        rows, cols = np.where(labels == label)
-        points = np.column_stack([cols, rows]).astype(np.float32)
-        rectangle = cv2.minAreaRect(points)
-        (_, _), (rect_w, rect_h), _ = rectangle
+        x = float(stats[label, cv2.CC_STAT_LEFT])
+        y = float(stats[label, cv2.CC_STAT_TOP])
+        w = float(stats[label, cv2.CC_STAT_WIDTH])
+        h = float(stats[label, cv2.CC_STAT_HEIGHT])
 
-        if rect_w < 8 or rect_h < 8:
+        if w < 8 or h < 8:
             continue
 
-        rect_area = rect_w * rect_h
-        fill = component_area / rect_area
-        aspect_ratio = max(rect_w, rect_h) / min(rect_w, rect_h)
-        area_fraction = rect_area / image_area
+        area_fraction = (w * h) / image_area
+        aspect_ratio = max(w, h) / min(w, h)
 
-        # A photo is a well-filled, plausibly-proportioned rectangle. This also
+        # A photo is a plausibly-proportioned box. The upper area bound also
         # rejects the near-full-page blob that appears when detection fails.
         if not (
             minimum_area_fraction < area_fraction < 0.94
-            and fill > 0.45
             and aspect_ratio < 6.5
         ):
             continue
 
-        quad = order_quad_points(cv2.boxPoints(rectangle))
-        full_resolution_quad = quad / scale
-        centre = full_resolution_quad.mean(axis=0)
-        area = quad_area(full_resolution_quad)
+        boxes.append((x, y, x + w, y + h))
 
+    # Merge overlapping boxes into one per photo. This collapses the skewed
+    # slivers and sky/subject splits that previously became separate detections.
+    boxes = merge_overlapping_boxes(boxes, overlap_fraction=0.12)
+
+    candidates: list[Detection] = []
+    for x0, y0, x1, y1 in boxes:
+        points = (
+            np.array(
+                [[x0, y0], [x1, y0], [x1, y1], [x0, y1]],
+                dtype=np.float32,
+            )
+            / scale
+        )
+        centre = points.mean(axis=0)
         candidates.append(
             Detection(
-                points=full_resolution_quad,
-                area=area,
+                points=points,
+                area=quad_area(points),
                 centre_x=float(centre[0]),
                 centre_y=float(centre[1]),
             )
         )
 
-    # Merge overlapping rectangles, keeping the larger. A single photo whose
-    # interior split into two cores (for example a plain sky above a subject)
-    # produces overlapping rectangles that collapse back into one here.
     candidates.sort(key=lambda item: item.area, reverse=True)
-    unique: list[Detection] = []
-
-    for candidate in candidates:
-        overlaps = False
-        for accepted in unique:
-            intersection, _ = cv2.intersectConvexConvex(
-                candidate.points.astype(np.float32),
-                accepted.points.astype(np.float32),
-            )
-            smaller = min(candidate.area, accepted.area)
-            if smaller > 0 and intersection > 0.3 * smaller:
-                overlaps = True
-                break
-        if not overlaps:
-            unique.append(candidate)
-
-    unique = unique[:maximum_photos]
+    unique = candidates[:maximum_photos]
 
     # Reading order: cluster approximately into rows, then left to right.
     if unique:
@@ -467,63 +441,79 @@ def find_photo_detections(
     return unique, mask, scale
 
 
-def expanded_quad(
+def merge_overlapping_boxes(
+    boxes: list[tuple[float, float, float, float]],
+    overlap_fraction: float,
+) -> list[tuple[float, float, float, float]]:
+    """
+    Union axis-aligned boxes that overlap by more than ``overlap_fraction`` of
+    the smaller box, iterating to a fixed point.
+
+    Fragments of one photo (a sliver detection, or a sky region split from its
+    subject) overlap heavily and collapse into a single box, while genuinely
+    separate prints — kept apart by the white gap between them — do not.
+    """
+    boxes = list(boxes)
+    changed = True
+
+    while changed:
+        changed = False
+        result: list[tuple[float, float, float, float]] = []
+
+        for box in boxes:
+            for index, other in enumerate(result):
+                ix0 = max(box[0], other[0])
+                iy0 = max(box[1], other[1])
+                ix1 = min(box[2], other[2])
+                iy1 = min(box[3], other[3])
+
+                intersection = max(0.0, ix1 - ix0) * max(0.0, iy1 - iy0)
+                area_box = (box[2] - box[0]) * (box[3] - box[1])
+                area_other = (other[2] - other[0]) * (other[3] - other[1])
+                smaller = min(area_box, area_other)
+
+                if smaller > 0 and intersection > overlap_fraction * smaller:
+                    result[index] = (
+                        min(box[0], other[0]),
+                        min(box[1], other[1]),
+                        max(box[2], other[2]),
+                        max(box[3], other[3]),
+                    )
+                    changed = True
+                    break
+            else:
+                result.append(box)
+
+        boxes = result
+
+    return boxes
+
+
+def crop_bounding_box(
+    image: np.ndarray,
     points: np.ndarray,
     margin_pixels: float,
-    image_width: int,
-    image_height: int,
 ) -> np.ndarray:
-    """Expand a quadrilateral outwards from its centre."""
-    points = order_quad_points(points)
-    centre = points.mean(axis=0)
+    """
+    Return the uncropped photo as an axis-aligned slice of the source image.
 
-    expanded = points.copy()
+    The detected box is padded by ``margin_pixels`` and clipped to the image, so
+    the whole print is kept. No deskew or perspective correction is applied;
+    splitting the scan is the only job here.
+    """
+    height, width = image.shape[:2]
 
-    for index, point in enumerate(points):
-        direction = point - centre
-        distance = np.linalg.norm(direction)
+    x0 = int(np.floor(points[:, 0].min() - margin_pixels))
+    y0 = int(np.floor(points[:, 1].min() - margin_pixels))
+    x1 = int(np.ceil(points[:, 0].max() + margin_pixels))
+    y1 = int(np.ceil(points[:, 1].max() + margin_pixels))
 
-        if distance > 0:
-            expanded[index] = point + direction / distance * margin_pixels
+    x0 = max(0, x0)
+    y0 = max(0, y0)
+    x1 = min(width, x1)
+    y1 = min(height, y1)
 
-    expanded[:, 0] = np.clip(expanded[:, 0], 0, image_width - 1)
-    expanded[:, 1] = np.clip(expanded[:, 1], 0, image_height - 1)
-
-    return expanded.astype(np.float32)
-
-
-def warp_photo(image: np.ndarray, points: np.ndarray) -> np.ndarray:
-    """Deskew and perspective-correct a detected photo."""
-    points = order_quad_points(points)
-    top_left, top_right, bottom_right, bottom_left = points
-
-    width_top = np.linalg.norm(top_right - top_left)
-    width_bottom = np.linalg.norm(bottom_right - bottom_left)
-    height_left = np.linalg.norm(bottom_left - top_left)
-    height_right = np.linalg.norm(bottom_right - top_right)
-
-    output_width = max(1, int(round(max(width_top, width_bottom))))
-    output_height = max(1, int(round(max(height_left, height_right))))
-
-    destination = np.array(
-        [
-            [0, 0],
-            [output_width - 1, 0],
-            [output_width - 1, output_height - 1],
-            [0, output_height - 1],
-        ],
-        dtype=np.float32,
-    )
-
-    transformation = cv2.getPerspectiveTransform(points, destination)
-
-    return cv2.warpPerspective(
-        image,
-        transformation,
-        (output_width, output_height),
-        flags=cv2.INTER_CUBIC,
-        borderMode=cv2.BORDER_REPLICATE,
-    )
+    return image[y0:y1, x0:x1].copy()
 
 
 def load_face_detector() -> "cv2.FaceDetectorYN | None":
@@ -784,13 +774,7 @@ def process_scan(
             )
             continue
 
-        points = expanded_quad(
-            detection.points,
-            margin_pixels,
-            width,
-            height,
-        )
-        cropped = warp_photo(image, points)
+        cropped = crop_bounding_box(image, detection.points, margin_pixels)
 
         rotation = 0
         face_count = 0

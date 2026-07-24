@@ -46,13 +46,32 @@ Family-album scans: **white-bordered prints on a near-white scanner lid**
 3. Dilate + close → filled photo regions.
 4. **Open** with a kernel `~1.4%` of image height — this is the key step; it
    severs thin bridges so each print becomes its own connected component.
-5. `connectedComponentsWithStats` → per component `minAreaRect`.
-6. Accept filter: `min_area < area_frac < 0.94`, `fill > 0.45`, `aspect < 6.5`.
+5. `connectedComponentsWithStats` → per component **axis-aligned `boundingRect`**
+   (`CC_STAT_*`). Not `minAreaRect` — see lesson below.
+6. Accept filter: `min_area < area_frac < 0.94`, `aspect < 6.5`.
    (The `<0.94` also rejects the near-full-page blob that appears on failure.)
-7. Overlap-merge (intersection > 0.3·smaller area) collapses a photo that split
-   into two cores (e.g. sky above subject) back into one.
+7. `merge_overlapping_boxes`: union any two boxes overlapping by >0.12 of the
+   smaller, to a fixed point. Collapses slivers and sky/subject splits into one
+   box per photo. Genuinely separate prints keep their white gap, so they don't
+   merge.
 
-Result: **238 photos across the 84 scans** (~2.8/scan, matches the expected ~3).
+Output is **not cropped or deskewed** — `crop_bounding_box` returns
+`image[y0:y1, x0:x1]` padded by `--margin`. The requirement is only to split the
+scan into whole prints; orientation happens afterward on each split.
+
+Result: **~270 photos across the 84 scans** (~3/scan, matches expectation).
+
+### Lesson: do not use minAreaRect here
+
+The first version fit `minAreaRect` per component and perspective-warped it.
+On irregular/partial components it produced **skewed diamonds over sub-regions**
+of a single photo (a vampire's face, a patch of water), splitting one photo into
+2–3 rotated slivers. Axis-aligned `boundingRect` + overlap-merge fixed this
+(`titi_universalstudio87_campvivaldi`, `titi_voilier` were the reference
+failures). Photos on a flatbed are near axis-aligned, so upright boxes are fine.
+Genuinely one-photo-with-a-big-internal-bright-gap (voilier top: water separated
+from cabin by boat structure) can still over-split; erring toward over-split is
+acceptable (extra file to discard) — over-*merge* would lose a photo.
 
 ### Do NOT
 

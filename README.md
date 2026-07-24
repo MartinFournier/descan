@@ -13,9 +13,14 @@ For every image in the input directory:
    plus a colour/darkness signal from the photo interior, then severs the thin
    bridges (drop shadows, scanner banding) that would weld neighbouring prints
    into one blob. Each surviving connected component is one photo.
-2. **Deskew + perspective-crop** each photo (small rotations are corrected).
-3. **Auto-orient** to 0/90/180/270° using the YuNet DNN face detector: it scores
-   all four rotations and picks the one where faces read as upright.
+2. **Split, don't crop.** Each photo is emitted as an axis-aligned slice of the
+   source — the whole print, white border and all. No deskew or perspective
+   correction: the only job is to separate the prints. Overlapping detections
+   (slivers, or a bright region split from its subject) are merged so each print
+   is one file.
+3. **Auto-orient** each split to 0/90/180/270° using the YuNet DNN face
+   detector: it scores all four rotations and picks the one where faces read as
+   upright.
 4. **Write** a lossless PNG per photo, named `<scan-stem>_pNN.png`.
 
 Input files are only ever read, never modified.
