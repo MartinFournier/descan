@@ -63,6 +63,21 @@ before a real run.
 | `--recursive` | Walk subdirectories. |
 | `--verbose` | Extra logging. |
 
+## Manual cropping
+
+For the few photos the detector misses or mis-splits (very faded/low-contrast
+prints, or a photo whose bright sky looks like a gap), draw the boxes by hand:
+
+```bash
+python manualcrop.py ~/Scans/titi_mariage.png ~/Photos/split
+```
+
+Drag a box around each photo, **ENTER** after each, **ESC** when done. Each box
+is saved as `<stem>_pNN.png`, auto-oriented the same way as `ingest.py`. New
+crops are numbered *after* any existing ones for that scan, so they add to the
+automatic output rather than replacing it (use `--overwrite` to renumber from
+p01). A directory argument walks every scan in turn.
+
 ## Tuning notes
 
 Detection is classical CV, tuned for *light prints with white borders on a
