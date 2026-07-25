@@ -39,48 +39,52 @@ Family-album scans: **white-bordered prints on a near-white scanner lid**
 
 ## Detection algorithm (current, in `build_detection_mask` + `find_photo_detections`)
 
-1. `bilateralFilter` to kill banding while keeping real photo edges.
-2. Foreground = **faint border edges** (`Canny(12,40)`, low is safe post-denoise)
-   OR **interior signal** (saturation `>18` or darkness `>35`), morph-gradient'd
-   to an outline.
-3. Dilate + close → filled photo regions.
-4. **Open** with a kernel `~1.4%` of image height — this is the key step; it
-   severs thin bridges so each print becomes its own connected component.
+Deliberately simple — this is the third iteration, and simpler beat clever:
+
+1. `bilateralFilter` to suppress scanner banding.
+2. Foreground = **not background**: `(background_L - L) > 12` (darker than the
+   lid) OR `chroma > 10` (coloured). `background_L` = median lightness of the
+   3px scan border (border is almost always lid).
+3. `MORPH_CLOSE` (~1%) to bridge speckle, then **`fill_holes`** — flood the
+   background in from a *padded* frame, turn on whatever it can't reach. This
+   solidifies each photo (sky, white shirts included) into one blob and is what
+   killed the over-split problem.
+4. `MORPH_OPEN` (~1.2%) to drop thin links between adjacent prints and noise.
 5. `connectedComponentsWithStats` → per component **axis-aligned `boundingRect`**
-   (`CC_STAT_*`). Not `minAreaRect` — see lesson below.
+   (`CC_STAT_*`), never `minAreaRect` — see lesson.
 6. Accept filter: `min_area < area_frac < 0.94`, `aspect < 6.5`.
-   (The `<0.94` also rejects the near-full-page blob that appears on failure.)
-7. `merge_overlapping_boxes`: union any two boxes overlapping by >0.12 of the
-   smaller, to a fixed point. Collapses slivers and sky/subject splits into one
-   box per photo. Genuinely separate prints keep their white gap, so they don't
-   merge.
+   (`<0.94` also rejects the near-full-page blob that appears on failure.)
+7. `merge_overlapping_boxes`: union boxes overlapping by >0.12 of the smaller.
+   Separate prints keep their white gap, so they don't merge.
 
 Output is **not cropped or deskewed** — `crop_bounding_box` returns
-`image[y0:y1, x0:x1]` padded by `--margin`. The requirement is only to split the
-scan into whole prints; orientation happens afterward on each split.
+`image[y0:y1, x0:x1]` padded by `--margin`. Orientation runs afterward per split.
 
-Result: **~270 photos across the 84 scans** (~3/scan, matches expectation).
+Result: **~220 photos across the 84 scans**.
 
-### Lesson: do not use minAreaRect here
+### Lesson: minAreaRect and the emap approach were both wrong
 
-The first version fit `minAreaRect` per component and perspective-warped it.
-On irregular/partial components it produced **skewed diamonds over sub-regions**
-of a single photo (a vampire's face, a patch of water), splitting one photo into
-2–3 rotated slivers. Axis-aligned `boundingRect` + overlap-merge fixed this
-(`titi_universalstudio87_campvivaldi`, `titi_voilier` were the reference
-failures). Photos on a flatbed are near axis-aligned, so upright boxes are fine.
-Genuinely one-photo-with-a-big-internal-bright-gap (voilier top: water separated
-from cabin by boat structure) can still over-split; erring toward over-split is
-acceptable (extra file to discard) — over-*merge* would lose a photo.
+- The 2nd version built a foreground from **Canny edges + interior gradient**,
+  dilate/close/open, then fit **`minAreaRect`** and perspective-warped. On
+  irregular/partial components minAreaRect produced **skewed diamonds over
+  sub-regions** of one photo (a vampire's face, a patch of water) → 2–3 rotated
+  slivers per print (`titi_universalstudio87_campvivaldi`, `titi_voilier` were
+  the reference failures). Photos on a flatbed are near axis-aligned; upright
+  `boundingRect` is correct and simpler.
+- `fill_holes` was avoided in v2 for fear of welding pages, but the real welds
+  came from over-aggressive `MORPH_CLOSE` *before* filling, plus a **seed bug**
+  (flooding from `(0,0)` when a photo touches that corner fills the whole page).
+  Pad a background frame and seed from there and it is safe: inter-photo gaps
+  run to the border so the flood reaches them and they stay open.
 
 ### Do NOT
 
-- `fill_holes`/flood-fill the mask: inter-photo gaps become enclosed "holes" and
-  fill in, welding the whole page into one component. Tried it, whole page → 1 blob.
 - `RETR_EXTERNAL` contours: when foreground bridges across the page the outer
-  contour swallows every print. Use connected components instead.
-- Push detection resolution high; `--processing-size 1200` is tuned. Absolute
-  thresholds (Canny, sat/dark) were calibrated at ~1100–1200 px.
+  contour swallows every print. Use connected components.
+- flood `fill_holes` from `(0,0)` without a padded background frame (seed bug
+  above), or after a large `MORPH_CLOSE` that rings the whole page.
+- Push detection resolution high; `--processing-size 1200` is tuned. The
+  absolute thresholds (L delta, chroma) were calibrated at ~1200 px.
 
 ## Orientation (`load_face_detector`, `face_orientation_score`, `auto_orient_photo`)
 

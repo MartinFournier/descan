@@ -262,6 +262,23 @@ def resize_for_detection(
     return resized, scale
 
 
+def fill_holes(mask: np.ndarray) -> np.ndarray:
+    """
+    Fill enclosed holes in a binary mask, solidifying each region.
+
+    Flood the background inward from a guaranteed-background border (a padded
+    frame, since a photo may touch the real image corner), then whatever the
+    flood could not reach is an interior hole and gets turned on. This is what
+    makes each photo a single solid blob even when its interior contains light
+    sky or white clothing.
+    """
+    padded = cv2.copyMakeBorder(mask, 1, 1, 1, 1, cv2.BORDER_CONSTANT, value=0)
+    flooded = padded.copy()
+    cv2.floodFill(flooded, np.zeros((0, 0), np.uint8), (0, 0), 255)
+    background = flooded[1:-1, 1:-1]
+    return mask | cv2.bitwise_not(background)
+
+
 def build_detection_mask(
     image: np.ndarray,
     background_threshold: float,
@@ -269,71 +286,58 @@ def build_detection_mask(
     """
     Build a mask whose connected components are individual printed photos.
 
-    Family-album scans are typically several white-bordered prints on a
-    near-white scanner lid, so a background-colour difference is close to zero
-    and useless. Instead this combines faint print-border edges with a
-    saturation/darkness signal from the photo interior to mark foreground, then
-    severs the thin bridges (drop shadows, scanner banding) that would
-    otherwise weld neighbouring prints into a single blob. Each surviving
-    component is one photo.
+    Family-album scans are white-bordered prints on a near-white scanner lid.
+    The approach is deliberately simple: mark every pixel that is *not*
+    background (darker than the lid, or coloured), fill each photo solid so its
+    light interior regions are included, then open away thin links and speckle.
+    Each surviving component is one whole photo.
 
     The returned mask is 8-bit, 255 on photo regions and 0 on background.
     """
     height, width = image.shape[:2]
     short_side = min(height, width)
 
-    # Denoise first: this removes low-amplitude scanner banding that would
-    # otherwise register as spurious texture, while keeping real photo edges.
+    # Denoise to suppress low-amplitude scanner banding.
     denoised = cv2.bilateralFilter(image, 9, 50, 50)
-    gray = cv2.cvtColor(denoised, cv2.COLOR_BGR2GRAY)
     lab = cv2.cvtColor(denoised, cv2.COLOR_BGR2LAB).astype(np.float32)
+    lightness = lab[:, :, 0]
+    chroma = np.abs(lab[:, :, 1] - 128.0) + np.abs(lab[:, :, 2] - 128.0)
 
-    # Faint print-border edges. Low thresholds are safe because banding is
-    # already denoised away.
-    edges = cv2.Canny(gray, 12, 40)
+    # Background lightness estimated from the scan border, which is almost
+    # always lid rather than photo.
+    border = np.concatenate(
+        [
+            lightness[:3].ravel(),
+            lightness[-3:].ravel(),
+            lightness[:, :3].ravel(),
+            lightness[:, -3:].ravel(),
+        ]
+    )
+    background_lightness = float(np.median(border))
 
-    # Photo interiors depart from the white lid in colour (saturation) or
-    # brightness (darkness); its outline reinforces the border edges above.
-    saturation = np.abs(lab[:, :, 1] - 128.0) + np.abs(lab[:, :, 2] - 128.0)
-    darkness = 255.0 - lab[:, :, 0]
-    interior = (
-        (saturation > 18.0) | (darkness > 35.0)
+    # Foreground: noticeably darker than the lid, or noticeably coloured.
+    foreground = (
+        ((background_lightness - lightness) > 12.0) | (chroma > 10.0)
     ).astype(np.uint8) * 255
-    interior_outline = cv2.morphologyEx(
-        interior,
-        cv2.MORPH_GRADIENT,
-        cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3)),
-    )
 
-    combined = cv2.bitwise_or(edges, interior_outline)
-
-    # Thicken and close the outline into filled photo regions.
-    dilate_size = max(3, int(short_side * 0.006)) | 1
-    combined = cv2.dilate(
-        combined,
-        cv2.getStructuringElement(cv2.MORPH_RECT, (dilate_size, dilate_size)),
-        iterations=1,
-    )
-    close_size = (dilate_size * 2) | 1
-    combined = cv2.morphologyEx(
-        combined,
+    # Close small speckle gaps, fill each photo solid, then open to drop thin
+    # bridges between adjacent prints and isolated noise.
+    close_size = max(3, int(short_side * 0.010)) | 1
+    foreground = cv2.morphologyEx(
+        foreground,
         cv2.MORPH_CLOSE,
-        cv2.getStructuringElement(cv2.MORPH_RECT, (close_size, close_size)),
-        iterations=1,
+        cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (close_size, close_size)),
     )
+    foreground = fill_holes(foreground)
 
-    # Open to sever the thin bridges linking adjacent prints so that each photo
-    # becomes its own connected component. The kernel is wider than a drop
-    # shadow or gap fill but far narrower than a photo.
-    open_size = max(5, int(height * 0.014)) | 1
-    core = cv2.morphologyEx(
-        combined,
+    open_size = max(3, int(short_side * 0.012)) | 1
+    foreground = cv2.morphologyEx(
+        foreground,
         cv2.MORPH_OPEN,
         cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (open_size, open_size)),
-        iterations=1,
     )
 
-    return core
+    return foreground
 
 
 def quad_area(points: np.ndarray) -> float:

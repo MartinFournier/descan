@@ -9,10 +9,10 @@ the glass; this produces one clean PNG per photo.
 For every image in the input directory:
 
 1. **Detect** each printed photo. These albums are mostly white-bordered prints
-   on a near-white scanner lid, so detection keys on faint print-border edges
-   plus a colour/darkness signal from the photo interior, then severs the thin
-   bridges (drop shadows, scanner banding) that would weld neighbouring prints
-   into one blob. Each surviving connected component is one photo.
+   on a near-white scanner lid, so detection marks every pixel that is *not*
+   background (darker than the lid, or coloured), fills each photo solid so its
+   light interior is included, then opens away the thin links between adjacent
+   prints. Each surviving connected component is one photo.
 2. **Split, don't crop.** Each photo is emitted as an axis-aligned slice of the
    source — the whole print, white border and all. No deskew or perspective
    correction: the only job is to separate the prints. Overlapping detections
