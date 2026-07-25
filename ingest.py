@@ -400,6 +400,12 @@ def find_photo_detections(
     # slivers and sky/subject splits that previously became separate detections.
     boxes = merge_overlapping_boxes(boxes, overlap_fraction=0.12)
 
+    # The mask hugs the coloured/dark content, so the box clips a photo's white
+    # border and pale regions (sky, white clothing). Grow each box outward until
+    # it reaches the flat white lid or a neighbouring photo, recovering the whole
+    # print without merging separate ones.
+    boxes = expand_boxes_to_lid(working, boxes)
+
     candidates: list[Detection] = []
     for x0, y0, x1, y1 in boxes:
         points = (
@@ -443,6 +449,73 @@ def find_photo_detections(
         )
 
     return unique, mask, scale
+
+
+def expand_boxes_to_lid(
+    image: np.ndarray,
+    boxes: list[tuple[float, float, float, float]],
+) -> list[tuple[float, float, float, float]]:
+    """
+    Grow each detection box outward until it meets the scanner lid or a neighbour.
+
+    The detection mask keys on coloured/dark content, so a box hugs that content
+    and clips the print's white border and pale regions (sky, white clothing).
+    Each side is pushed out in small steps and stops when the strip just beyond
+    is mostly flat white lid, when it reaches another box, or at the image edge.
+    Because it stops at the white gap, separate prints are never merged.
+    """
+    if not boxes:
+        return boxes
+
+    height, width = image.shape[:2]
+    lab = cv2.cvtColor(
+        cv2.bilateralFilter(image, 9, 50, 50), cv2.COLOR_BGR2LAB
+    ).astype(np.float32)
+    lightness = lab[:, :, 0]
+    chroma = np.abs(lab[:, :, 1] - 128.0) + np.abs(lab[:, :, 2] - 128.0)
+
+    # Lid reference: the scan is mostly lid, so a high lightness percentile is
+    # a robust white estimate. "Lid" is bright and near-neutral.
+    lid_reference = float(np.percentile(lightness, 92))
+    is_lid = ((lightness > lid_reference - 12.0) & (chroma < 7.0)).astype(np.uint8)
+
+    step = max(2, int(min(height, width) * 0.004))
+    lid_strip_fraction = 0.80
+
+    def blocked(strip: np.ndarray) -> bool:
+        return strip.size > 0 and float(strip.mean()) > lid_strip_fraction
+
+    expanded: list[tuple[float, float, float, float]] = []
+    for index, box in enumerate(boxes):
+        x0, y0, x1, y1 = (int(round(v)) for v in box)
+        others = [o for j, o in enumerate(boxes) if j != index]
+
+        def hits_neighbour(nx0, ny0, nx1, ny1) -> bool:
+            for ox0, oy0, ox1, oy1 in others:
+                if not (ox1 <= nx0 or ox0 >= nx1 or oy1 <= ny0 or oy0 >= ny1):
+                    return True
+            return False
+
+        while y0 - step >= 0 and not blocked(is_lid[y0 - step : y0, x0:x1]):
+            if hits_neighbour(x0, y0 - step, x1, y0):
+                break
+            y0 -= step
+        while y1 + step <= height and not blocked(is_lid[y1 : y1 + step, x0:x1]):
+            if hits_neighbour(x0, y1, x1, y1 + step):
+                break
+            y1 += step
+        while x0 - step >= 0 and not blocked(is_lid[y0:y1, x0 - step : x0]):
+            if hits_neighbour(x0 - step, y0, x0, y1):
+                break
+            x0 -= step
+        while x1 + step <= width and not blocked(is_lid[y0:y1, x1 : x1 + step]):
+            if hits_neighbour(x1, y0, x1 + step, y1):
+                break
+            x1 += step
+
+        expanded.append((float(x0), float(y0), float(x1), float(y1)))
+
+    return expanded
 
 
 def merge_overlapping_boxes(

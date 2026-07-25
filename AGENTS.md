@@ -56,9 +56,22 @@ Deliberately simple — this is the third iteration, and simpler beat clever:
    (`<0.94` also rejects the near-full-page blob that appears on failure.)
 7. `merge_overlapping_boxes`: union boxes overlapping by >0.12 of the smaller.
    Separate prints keep their white gap, so they don't merge.
+8. **`expand_boxes_to_lid`**: the mask hugs coloured/dark content, so the box
+   clips the print's white border and pale regions (sky, white shirts, pale
+   walls) — the main "over-crop" complaint. Each side is pushed outward in small
+   steps and stops when the strip just beyond is mostly flat white lid
+   (`is_lid = L>p92-12 & chroma<7`, stop at >80% lid), when it reaches another
+   box, or at the image edge. Because it stops at the white gap it can never
+   merge separate prints. This is a *stopping* use of whiteness; using flatness
+   as a positive foreground signal instead welds everything (lid banding reads
+   as texture — tried it, whole scan → 1 box).
 
 Output is **not cropped or deskewed** — `crop_bounding_box` returns
 `image[y0:y1, x0:x1]` padded by `--margin`. Orientation runs afterward per split.
+The separation mask (steps 1-7) and the extent (step 8) are deliberately split:
+the mask is good at *counting/separating* photos but tight; expansion recovers
+the full extent without risking a merge. Reference over-crop fixes:
+`titi_plage`, `titi_violon` (was cutting the pale-walled violin shots in half).
 
 Result: **~220 photos across the 84 scans**.
 
