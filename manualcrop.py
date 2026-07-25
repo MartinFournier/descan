@@ -139,7 +139,7 @@ def select_boxes(
         display = image.copy()
 
     # rois: Nx4 array of (x, y, w, h) in display coordinates.
-    rois = cv2.selectROIs(window, display, showCrosshair=False, fromCenter=False)
+    rois = cv2.selectROIs(window, display, showCrosshair=True, fromCenter=False)
 
     boxes: list[tuple[int, int, int, int]] = []
     for x, y, w, h in rois:
