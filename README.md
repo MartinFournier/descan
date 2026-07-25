@@ -90,6 +90,25 @@ photo; the original is deleted and replaced by its `_pNN` pieces. Skipped files
 python manualcrop.py ~/Photos/to_fix ~/Photos/to_fix --replace
 ```
 
+## Trimming leftover white margins
+
+Some crops keep a large white block on one side where the box overshot into the
+scanner lid. `autocrop_review.py` peels flat white lid margins off each edge and
+lets you approve each suggestion:
+
+```bash
+python autocrop_review.py ~/Photos/split
+```
+
+Only crops it would actually change are shown — original on the left, trim on the
+right. Keys: **y**/ENTER accept (overwrites the file), **n** skip, **f** flag for
+manual cropping, **q** quit. Flagged files are moved into a `to-split/` subfolder,
+ready to re-split by hand:
+
+```bash
+python manualcrop.py ~/Photos/split/to-split ~/Photos/split --replace
+```
+
 ## Tuning notes
 
 Detection is classical CV, tuned for *light prints with white borders on a
