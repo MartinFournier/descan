@@ -6,11 +6,11 @@ For photos the automatic detector in ``ingest.py`` misses or mis-splits. Open a
 scan, drag a box around each photo, and each is written as its own PNG using the
 same naming and auto-orientation as ``ingest.py``.
 
-Controls (OpenCV's built-in selector):
-    drag            draw a box
-    ENTER / SPACE   confirm the box, start another
-    c               cancel the box being drawn
-    ESC             finish this scan and save all boxes
+Controls:
+    drag            draw a box (a full-window crosshair tracks the cursor)
+    u / backspace   undo the last box
+    c               clear all boxes
+    ENTER / ESC     finish this image and save its boxes
 
 By default new crops are numbered after any existing ``<stem>_pNN.png`` so they
 add to, rather than overwrite, the automatic output. Use --overwrite to renumber
@@ -127,7 +127,18 @@ def select_boxes(
     display_size: int,
     window: str,
 ) -> list[tuple[int, int, int, int]]:
-    """Show the scan and return the drawn boxes in full-resolution coordinates."""
+    """
+    Draw crop boxes over the scan and return them in full-resolution coordinates.
+
+    A thin full-window crosshair tracks the cursor so a corner can be placed to
+    the pixel regardless of the system pointer size.
+
+    Controls:
+        drag                 draw a box
+        u / backspace        undo the last box
+        c                    clear all boxes
+        enter / esc / q      finish this image
+    """
     height, width = image.shape[:2]
     scale = min(1.0, display_size / max(height, width))
 
@@ -137,26 +148,80 @@ def select_boxes(
         )
     else:
         display = image.copy()
+    view_h, view_w = display.shape[:2]
 
-    # rois: Nx4 array of (x, y, w, h) in display coordinates.
-    rois = cv2.selectROIs(window, display, showCrosshair=True, fromCenter=False)
+    state = {"boxes": [], "cursor": (0, 0), "drag_from": None, "in_view": False}
+
+    def on_mouse(event, x, y, flags, _param):
+        x = max(0, min(view_w - 1, x))
+        y = max(0, min(view_h - 1, y))
+        state["cursor"] = (x, y)
+        state["in_view"] = True
+        if event == cv2.EVENT_LBUTTONDOWN:
+            state["drag_from"] = (x, y)
+        elif event == cv2.EVENT_LBUTTONUP and state["drag_from"] is not None:
+            x0, y0 = state["drag_from"]
+            box = (min(x0, x), min(y0, y), max(x0, x), max(y0, y))
+            if box[2] - box[0] > 3 and box[3] - box[1] > 3:
+                state["boxes"].append(box)
+            state["drag_from"] = None
+
+    cv2.namedWindow(window, cv2.WINDOW_AUTOSIZE)
+    cv2.setMouseCallback(window, on_mouse)
+
+    hint = "drag=box  u=undo  c=clear  enter/esc=done"
+    while True:
+        canvas = display.copy()
+        for bx0, by0, bx1, by1 in state["boxes"]:
+            cv2.rectangle(canvas, (bx0, by0), (bx1, by1), (0, 255, 0), 2)
+
+        cx, cy = state["cursor"]
+        if state["drag_from"] is not None:  # rubber-band the box being drawn
+            dx0, dy0 = state["drag_from"]
+            cv2.rectangle(canvas, (dx0, dy0), (cx, cy), (0, 200, 255), 2)
+        if state["in_view"]:  # full-window crosshair at the cursor
+            cv2.line(canvas, (cx, 0), (cx, view_h - 1), (0, 200, 255), 1)
+            cv2.line(canvas, (0, cy), (view_w - 1, cy), (0, 200, 255), 1)
+
+        cv2.rectangle(canvas, (0, 0), (view_w, 22), (0, 0, 0), -1)
+        cv2.putText(
+            canvas,
+            f"{hint}   [{len(state['boxes'])} boxes]",
+            (6, 16),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.5,
+            (255, 255, 255),
+            1,
+            cv2.LINE_AA,
+        )
+
+        cv2.imshow(window, canvas)
+        key = cv2.waitKey(16) & 0xFF
+        if key in (13, 27, ord("q")):  # enter, esc, q
+            break
+        if key in (ord("u"), 8) and state["boxes"]:  # undo
+            state["boxes"].pop()
+        elif key == ord("c"):  # clear
+            state["boxes"].clear()
+        # window closed via the title-bar button
+        if cv2.getWindowProperty(window, cv2.WND_PROP_VISIBLE) < 1:
+            break
 
     boxes: list[tuple[int, int, int, int]] = []
-    for x, y, w, h in rois:
-        if w <= 0 or h <= 0:
-            continue
-        x0 = int(round(x / scale))
-        y0 = int(round(y / scale))
-        x1 = min(width, int(round((x + w) / scale)))
-        y1 = min(height, int(round((y + h) / scale)))
-        boxes.append((max(0, x0), max(0, y0), x1, y1))
+    for bx0, by0, bx1, by1 in state["boxes"]:
+        x0 = max(0, int(round(bx0 / scale)))
+        y0 = max(0, int(round(by0 / scale)))
+        x1 = min(width, int(round(bx1 / scale)))
+        y1 = min(height, int(round(by1 / scale)))
+        if x1 > x0 and y1 > y0:
+            boxes.append((x0, y0, x1, y1))
     return boxes
 
 
 def process_scan(path: Path, args: argparse.Namespace, detector) -> int:
     image = read_image(path)
 
-    window = f"{path.name}  -  drag boxes, ENTER after each, ESC when done"
+    window = f"{path.name}  -  drag boxes, ESC/ENTER when done"
     try:
         boxes = select_boxes(image, args.display_size, window)
     finally:
