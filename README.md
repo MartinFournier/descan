@@ -76,7 +76,17 @@ Drag a box around each photo, **ENTER** after each, **ESC** when done. Each box
 is saved as `<stem>_pNN.png`, auto-oriented the same way as `ingest.py`. New
 crops are numbered *after* any existing ones for that scan, so they add to the
 automatic output rather than replacing it (use `--overwrite` to renumber from
-p01). A directory argument walks every scan in turn.
+p01). A directory argument walks every image in turn (`[3/12] name`); drawing no
+box leaves that file untouched.
+
+**Re-splitting crops that still hold two photos** (`--replace`): point it at the
+folder of crops, using the same folder as output. Draw a box around each real
+photo; the original is deleted and replaced by its `_pNN` pieces. Skipped files
+(no box drawn) are left as they are.
+
+```bash
+python manualcrop.py ~/Photos/to_fix ~/Photos/to_fix --replace
+```
 
 ## Tuning notes
 

@@ -16,9 +16,23 @@ By default new crops are numbered after any existing ``<stem>_pNN.png`` so they
 add to, rather than overwrite, the automatic output. Use --overwrite to renumber
 from p01.
 
+A directory argument iterates over every image in it, one window at a time
+(``[3/12] name``). Drawing no box just moves on, leaving that file untouched.
+
+Re-split mode (--replace) is for when the inputs are themselves crops, some of
+which still hold more than one photo: point it at the folder of crops (output
+may be the same folder), draw a box around each real photo, and the original is
+deleted and replaced by its ``_pNN`` pieces. Files you skip are left alone.
+
 Example:
+    # split a whole scan
     python manualcrop.py ~/Scans/titi_mariage.png ~/Photos/split
+
+    # walk a folder of scans
     python manualcrop.py ~/Scans ~/Photos/split --recursive
+
+    # re-split crops that still contain two photos, in place
+    python manualcrop.py ~/Photos/to_fix ~/Photos/to_fix --replace
 """
 
 from __future__ import annotations
@@ -87,6 +101,14 @@ def parse_arguments() -> argparse.Namespace:
         help="Number crops from p01, replacing existing files, instead of "
         "appending after them.",
     )
+    parser.add_argument(
+        "--replace",
+        action="store_true",
+        help="Re-split mode: after drawing boxes for an image, delete the "
+        "original file and number the pieces from p01. Use when the inputs are "
+        "crops that still contain more than one photo. Drawing no box leaves "
+        "the file untouched.",
+    )
     return parser.parse_args()
 
 
@@ -142,17 +164,24 @@ def process_scan(path: Path, args: argparse.Namespace, detector) -> int:
         cv2.waitKey(1)  # flush the window close on some backends
 
     if not boxes:
-        logging.info("%s: no boxes drawn; skipped", path.name)
+        logging.info("%s: no boxes drawn; left as is", path.name)
         return 0
 
-    start = 1 if args.overwrite else next_start_index(args.output_directory, path.stem)
+    fresh = args.overwrite or args.replace
+
+    # In re-split mode clear any earlier pieces of this file before renumbering.
+    if args.replace:
+        for stale in args.output_directory.glob(f"{path.stem}_p*.png"):
+            stale.unlink()
+
+    start = 1 if fresh else next_start_index(args.output_directory, path.stem)
 
     written = 0
     for offset, (x0, y0, x1, y1) in enumerate(boxes):
         index = start + offset
         destination = args.output_directory / f"{path.stem}_p{index:02d}.png"
 
-        if destination.exists() and not args.overwrite:
+        if destination.exists() and not fresh:
             logging.warning(
                 "%s: exists; skipping (use --overwrite)", destination.name
             )
@@ -181,6 +210,12 @@ def process_scan(path: Path, args: argparse.Namespace, detector) -> int:
         )
         written += 1
 
+    # Re-split mode: the original multi-photo file has been replaced by its
+    # pieces, so remove it. Only when something was actually written.
+    if args.replace and written and path.exists():
+        path.unlink()
+        logging.info("  removed original %s", path.name)
+
     return written
 
 
@@ -192,10 +227,9 @@ def main() -> int:
     output_directory = args.output_directory.expanduser().resolve()
 
     if input_path.is_dir():
+        # In re-split mode the folder holds the crops themselves, so output is
+        # normally the same folder; that is allowed here.
         scans = find_input_files(input_path, args.recursive)
-        if output_directory == input_path:
-            logging.error("Input and output directories must differ")
-            return 2
     elif input_path.is_file():
         if input_path.suffix.lower() not in SUPPORTED_EXTENSIONS:
             logging.error("Unsupported file type: %s", input_path.suffix)
@@ -215,8 +249,8 @@ def main() -> int:
     detector = None if args.no_auto_orient else load_face_detector()
 
     total = 0
-    for path in scans:
-        logging.info("%s: %d already present", path.name, next_start_index(output_directory, path.stem) - 1)
+    for number, path in enumerate(scans, start=1):
+        logging.info("[%d/%d] %s", number, len(scans), path.name)
         try:
             total += process_scan(path, args, detector)
         except Exception as error:  # keep going to the next scan
