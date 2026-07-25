@@ -406,6 +406,11 @@ def find_photo_detections(
     # print without merging separate ones.
     boxes = expand_boxes_to_lid(working, boxes)
 
+    # A photo with a low-content band running through it (plain sand, a pale
+    # wall) splits into adjacent boxes. Rejoin boxes whose shared border is photo
+    # content rather than white lid; separate prints have a lid gap between them.
+    boxes = merge_content_bridged_boxes(working, boxes)
+
     candidates: list[Detection] = []
     for x0, y0, x1, y1 in boxes:
         points = (
@@ -516,6 +521,81 @@ def expand_boxes_to_lid(
         expanded.append((float(x0), float(y0), float(x1), float(y1)))
 
     return expanded
+
+
+def merge_content_bridged_boxes(
+    image: np.ndarray,
+    boxes: list[tuple[float, float, float, float]],
+) -> list[tuple[float, float, float, float]]:
+    """
+    Rejoin boxes that are two parts of one photo split by a low-content band.
+
+    When a plain sand strip or a dark wall runs through a photo, the mask breaks
+    it into adjacent boxes. For an adjacent pair, if the *whole union rectangle*
+    is almost entirely photo content (very little white lid inside it) the two
+    boxes are one photo and are merged. Two separate prints leave a white lid
+    gap inside the union, so it is not merged.
+
+    The union test is deliberately strict (a low lid fraction). It fires on
+    clearly dark over-splits but abstains when a photo has large bright regions
+    that could be confused with a gap, and it protects pale/faded prints — which
+    read as lid-like — from ever being welded together (losing a photo is far
+    worse than an over-split, which is just an extra file). Iterates to a fixed
+    point.
+    """
+    if len(boxes) < 2:
+        return boxes
+
+    height, width = image.shape[:2]
+    lab = cv2.cvtColor(
+        cv2.bilateralFilter(image, 9, 50, 50), cv2.COLOR_BGR2LAB
+    ).astype(np.float32)
+    lightness = lab[:, :, 0]
+    chroma = np.abs(lab[:, :, 1] - 128.0) + np.abs(lab[:, :, 2] - 128.0)
+    lid_reference = float(np.percentile(lightness, 92))
+    is_lid = ((lightness > lid_reference - 12.0) & (chroma < 7.0)).astype(np.uint8)
+
+    boxes = [[int(round(v)) for v in box] for box in boxes]
+
+    changed = True
+    while changed:
+        changed = False
+        for i in range(len(boxes)):
+            for j in range(i + 1, len(boxes)):
+                a, b = boxes[i], boxes[j]
+                y_overlap = min(a[3], b[3]) - max(a[1], b[1])
+                x_overlap = min(a[2], b[2]) - max(a[0], b[0])
+                min_height = min(a[3] - a[1], b[3] - b[1])
+                min_width = min(a[2] - a[0], b[2] - b[0])
+
+                side_by_side = y_overlap > 0.3 * min_height and (
+                    max(a[0], b[0]) - min(a[2], b[2])
+                ) < 0.15 * min_width
+                stacked = x_overlap > 0.3 * min_width and (
+                    max(a[1], b[1]) - min(a[3], b[3])
+                ) < 0.15 * min_height
+
+                if not (side_by_side or stacked):
+                    continue
+
+                union = is_lid[
+                    min(a[1], b[1]) : max(a[3], b[3]),
+                    min(a[0], b[0]) : max(a[2], b[2]),
+                ]
+                if union.size and float(union.mean()) < 0.10:
+                    boxes[i] = [
+                        min(a[0], b[0]),
+                        min(a[1], b[1]),
+                        max(a[2], b[2]),
+                        max(a[3], b[3]),
+                    ]
+                    boxes.pop(j)
+                    changed = True
+                    break
+            if changed:
+                break
+
+    return [tuple(float(v) for v in box) for box in boxes]
 
 
 def merge_overlapping_boxes(

@@ -65,6 +65,16 @@ Deliberately simple — this is the third iteration, and simpler beat clever:
    merge separate prints. This is a *stopping* use of whiteness; using flatness
    as a positive foreground signal instead welds everything (lid banding reads
    as texture — tried it, whole scan → 1 box).
+9. **`merge_content_bridged_boxes`**: a photo with a low-content band through it
+   (plain sand, a dark wall) splits into adjacent boxes. Rejoin an adjacent pair
+   only if the *whole union rectangle* is almost all non-lid
+   (`mean(is_lid) < 0.10`) — one solid photo. Deliberately strict: it fires on
+   clearly dark over-splits (`titi_noel_2001`) but abstains when a photo has
+   large bright regions that look like a gap (`titi_nyc8`'s bright sky stays
+   split — accepted), and it never welds pale/faded prints, which read as
+   lid-like (`titi_mariage`: welding it to 1 box lost photos — the failure this
+   guard exists to prevent). Losing a photo is far worse than an over-split
+   (just an extra file to discard), so the whole merge is biased to abstain.
 
 Output is **not cropped or deskewed** — `crop_bounding_box` returns
 `image[y0:y1, x0:x1]` padded by `--margin`. Orientation runs afterward per split.
