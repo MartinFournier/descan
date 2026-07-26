@@ -67,11 +67,12 @@ def clean_original(stem: str) -> str:
     stem = re.sub(                                  # the "titi" token anywhere
         r"(?i)(?<![a-z0-9])titi(?![a-z0-9])", "", stem
     )
-    stem = re.sub(                                  # 2x / 3x / 4x / 6x markers
-        r"(?<![A-Za-z0-9])\d+x(?![A-Za-z0-9])", "", stem, flags=re.IGNORECASE
+    stem = re.sub(                                  # 2x / 3x / x6 sheet markers
+        r"(?i)(?<![a-z0-9])(\d+x|x\d+)(?![a-z0-9])", "", stem
     )
     stem = re.sub(r"(_\d{1,2})+$", "", stem)        # trailing _1, _2, ...
     stem = re.sub(r"[_-]{2,}", "_", stem).strip("_-")
+    stem = re.sub(r"(?<=[A-Za-z])\d{1,2}$", "", stem)  # voilier2 -> voilier
     return stem or "photo"
 
 
