@@ -113,7 +113,7 @@ python manualcrop.py ~/Photos/split/to-split ~/Photos/split --replace
 
 Once dates are set (e.g. in darktable, which writes a `.xmp` sidecar per photo),
 `rename_photos.py` renames files to
-`YYYY-MM-DD_<Name>_pNNN__<cleaned-original>.ext`:
+`YYYY-MM-DD__<Name>_pNNN__<cleaned-original>.ext`:
 
 ```bash
 python rename_photos.py ~/Photos/split                 # dry run (default)

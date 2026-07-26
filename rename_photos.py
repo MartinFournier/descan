@@ -11,8 +11,8 @@ The original name is cleaned: a leading ``titi_`` is dropped, as are the crop
 suffixes (``_pNN``, including repeated ones from re-splits), the ``2x/3x/4x/6x``
 sheet markers, and trailing split indices (``_1``, ``_2`` ...).
 
-    titi_3x_famille_p02.png (+ .xmp)   -> 1994-08-28_Denise_p007__famille.png (+ .xmp)
-    titi_voilier_p03_p01.png           -> ..._Denise_pNNN__voilier.png
+    titi_3x_famille_p02.png (+ .xmp)   -> 1994-08-28__Denise_p007__famille.png (+ .xmp)
+    titi_voilier_p03_p01.png           -> ...__Denise_pNNN__voilier.png
 
 Dry-run by default; pass --apply to actually rename.
 """
@@ -172,7 +172,7 @@ def main() -> int:
     for offset, image in enumerate(ordered):
         index = args.start + offset
         name = (
-            f"{date_of[image]}_{args.name}_p{index:03d}"
+            f"{date_of[image]}__{args.name}_p{index:03d}"
             f"__{clean_original(image.stem)}{image.suffix.lower()}"
         )
         new_image = image.with_name(name)
@@ -182,8 +182,9 @@ def main() -> int:
         if sidecar is not None:
             claim(sidecar, target_sidecar(sidecar, image, new_image))
 
+    width = max((len(source.name) for source, _ in planned), default=0)
     for source, target in planned:
-        logging.info("%s  ->  %s", source.name, target.name)
+        logging.info("%s  ->  %s", source.name.ljust(width), target.name)
 
     if undated:
         logging.info(
