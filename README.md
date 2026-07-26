@@ -109,6 +109,28 @@ ready to re-split by hand:
 python manualcrop.py ~/Photos/split/to-split ~/Photos/split --replace
 ```
 
+## Renaming with dates
+
+Once dates are set (e.g. in darktable, which writes a `.xmp` sidecar per photo),
+`rename_photos.py` renames files to
+`YYYY-MM-DD_<Name>_pNNN__<cleaned-original>.ext`:
+
+```bash
+python rename_photos.py ~/Photos/split                 # dry run (default)
+python rename_photos.py ~/Photos/split --apply          # do it
+python rename_photos.py ~/Photos/split --name Denise --fallback-date 1994-01-01
+```
+
+- Date comes from each photo's `.xmp` sidecar (or the image's own EXIF), read via
+  `exiftool`. Files are numbered `pNNN` in **ascending capture-date order**.
+- The `.xmp` sidecar is renamed alongside its image so darktable keeps the edit
+  history linked.
+- The original name is cleaned: `titi` token removed, crop suffixes (`_pNN`,
+  including repeated), sheet markers (`2x/3x/4x/6x`), and trailing split indices
+  (`_1`, `_2`) stripped — `titi_3x_famille_p02` → `famille`.
+- Images with no date get `--fallback-date` (or `0000-00-00`) and are reported,
+  so you can date them and re-run.
+
 ## Tuning notes
 
 Detection is classical CV, tuned for *light prints with white borders on a
