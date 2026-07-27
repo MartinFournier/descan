@@ -14,6 +14,11 @@ sheet markers, and trailing split indices (``_1``, ``_2`` ...).
     titi_3x_famille_p02.png (+ .xmp)   -> 1994-08-28__Denise_p007__famille.png (+ .xmp)
     titi_voilier_p03_p01.png           -> ...__Denise_pNNN__voilier.png
 
+Re-running is safe: an already-applied ``DATE__Name_pNNN__`` prefix is stripped
+before rebuilding (no stacking), the date is re-read from the sidecar (a prior
+in-name date is used only as a fallback), and ``pNNN`` is renumbered over the
+current set — so adding or deleting files just re-sequences them.
+
 Dry-run by default; pass --apply to actually rename.
 """
 
@@ -59,6 +64,21 @@ def parse_arguments() -> argparse.Namespace:
         help="Actually rename. Without it, only prints the planned renames.",
     )
     return parser.parse_args()
+
+
+def split_applied_prefix(stem: str, name: str) -> tuple[str | None, str]:
+    """
+    Undo a prefix this script already applied, so re-runs are idempotent.
+
+    ``2012-01-01__Denise_p084__caraibes`` -> ("2012-01-01", "caraibes").
+    Returns (date-or-None, remaining-stem).
+    """
+    match = re.match(
+        rf"^(\d{{4}}-\d{{2}}-\d{{2}})__{re.escape(name)}_p\d+__(.*)$", stem
+    )
+    if match:
+        return match.group(1), match.group(2)
+    return None, stem
 
 
 def clean_original(stem: str) -> str:
@@ -142,20 +162,34 @@ def main() -> int:
         logging.error("No supported images in %s", folder)
         return 1
 
+    # Recover the base name and any prior date from a prefix we applied before,
+    # so re-runs stay idempotent instead of stacking prefixes.
+    applied = {image: split_applied_prefix(image.stem, args.name) for image in images}
+
     # Read the date from each image's sidecar when present, else the image.
     sidecars = {image: sidecar_for(image) for image in images}
     sources = {image: (sidecars[image] or image) for image in images}
     dates_by_source = read_dates(list({s.resolve() for s in sources.values()}))
 
     fallback = args.fallback_date or PLACEHOLDER_DATE
-    date_of = {
-        image: dates_by_source.get(source.resolve(), fallback)
-        for image, source in sources.items()
-    }
+
+    def resolve_date(image: Path) -> str:
+        # Metadata wins; then a date this script wrote before; then the fallback.
+        return (
+            dates_by_source.get(sources[image].resolve())
+            or applied[image][0]
+            or fallback
+        )
+
+    date_of = {image: resolve_date(image) for image in images}
     undated = sum(1 for image in images if date_of[image] == fallback)
 
     # Number in ascending capture-date order (then name, for stable ties).
     ordered = sorted(images, key=lambda image: (date_of[image], image.name.casefold()))
+
+    # Any current file may be renamed, so a target colliding with one of these
+    # is fine (it will be vacated); only an outside file is a real conflict.
+    managed = {p.resolve() for image in images for p in (image, sidecars[image]) if p}
 
     planned: list[tuple[Path, Path]] = []
     taken: set[Path] = set()
@@ -163,7 +197,7 @@ def main() -> int:
     def claim(source: Path, target: Path) -> bool:
         if target == source:
             return True
-        if target.exists() or target in taken:
+        if target in taken or (target.exists() and target.resolve() not in managed):
             logging.warning("skip %s -> %s (target exists)", source.name, target.name)
             return False
         taken.add(target)
@@ -172,10 +206,8 @@ def main() -> int:
 
     for offset, image in enumerate(ordered):
         index = args.start + offset
-        name = (
-            f"{date_of[image]}__{args.name}_p{index:03d}"
-            f"__{clean_original(image.stem)}{image.suffix.lower()}"
-        )
+        base = clean_original(applied[image][1])
+        name = f"{date_of[image]}__{args.name}_p{index:03d}__{base}{image.suffix.lower()}"
         new_image = image.with_name(name)
         if not claim(image, new_image):
             continue
@@ -197,8 +229,15 @@ def main() -> int:
         logging.info("\nDry run. %d rename(s) planned; pass --apply to do it.", len(planned))
         return 0
 
-    for source, target in planned:
-        source.rename(target)
+    # Two-phase via temp names so a renumber can't collide with a not-yet-moved
+    # file (e.g. p084 -> p351 while p351 still exists under its old name).
+    staged: list[tuple[Path, Path]] = []
+    for i, (source, target) in enumerate(planned):
+        temp = source.with_name(f".rename_tmp_{i}")
+        source.rename(temp)
+        staged.append((temp, target))
+    for temp, target in staged:
+        temp.rename(target)
     logging.info("\nRenamed %d file(s).", len(planned))
     return 0
 
