@@ -38,8 +38,8 @@ and its YuNet orientation.
     Model vendored at `assets/face_detection_yunet_2023mar.onnx` (~230 KB, from
     the `opencv_zoo` repo). Loading it prints a harmless
     `setPreferableTarget ... not supported by the new graph engine` warning.
-- Real scan corpus: `~/Sync/Titi_Scans_07-24/` (84 PNGs, ~50–60 MB each,
-  5100×7016 typical). Output convention: `~/Sync/Extract/` (+ `debug/`).
+- Tuned against a real corpus of ~84 PNG scans (~50–60 MB each, 5100×7016
+  typical). Overlays go to `<out>/debug/`.
 
 ## The data (drives every design choice)
 
@@ -87,19 +87,20 @@ Deliberately simple — this is the third iteration, and simpler beat clever:
    (plain sand, a dark wall) splits into adjacent boxes. Rejoin an adjacent pair
    only if the *whole union rectangle* is almost all non-lid
    (`mean(is_lid) < 0.10`) — one solid photo. Deliberately strict: it fires on
-   clearly dark over-splits (`titi_noel_2001`) but abstains when a photo has
-   large bright regions that look like a gap (`titi_nyc8`'s bright sky stays
-   split — accepted), and it never welds pale/faded prints, which read as
-   lid-like (`titi_mariage`: welding it to 1 box lost photos — the failure this
-   guard exists to prevent). Losing a photo is far worse than an over-split
-   (just an extra file to discard), so the whole merge is biased to abstain.
+   clearly dark over-splits (a dark indoor shot split by a pale wall) but
+   abstains when a photo has large bright regions that look like a gap (a shot
+   with a big bright sky stays split — accepted), and it never welds pale/faded
+   prints, which read as lid-like (faded sepia prints welded to one box lost
+   photos — the failure this guard exists to prevent). Losing a photo is far
+   worse than an over-split (just an extra file to discard), so the whole merge
+   is biased to abstain.
 
 Output is **not cropped or deskewed** — `crop_bounding_box` returns
 `image[y0:y1, x0:x1]` padded by `--margin`. Orientation runs afterward per split.
 The separation mask (steps 1-7) and the extent (step 8) are deliberately split:
 the mask is good at *counting/separating* photos but tight; expansion recovers
-the full extent without risking a merge. Reference over-crop fixes:
-`titi_plage`, `titi_violon` (was cutting the pale-walled violin shots in half).
+the full extent without risking a merge (it was cutting pale-walled interior
+shots and bright-sky beach shots in half before expansion was added).
 
 Result: **~220 photos across the 84 scans**.
 
@@ -108,10 +109,9 @@ Result: **~220 photos across the 84 scans**.
 - The 2nd version built a foreground from **Canny edges + interior gradient**,
   dilate/close/open, then fit **`minAreaRect`** and perspective-warped. On
   irregular/partial components minAreaRect produced **skewed diamonds over
-  sub-regions** of one photo (a vampire's face, a patch of water) → 2–3 rotated
-  slivers per print (`titi_universalstudio87_campvivaldi`, `titi_voilier` were
-  the reference failures). Photos on a flatbed are near axis-aligned; upright
-  `boundingRect` is correct and simpler.
+  sub-regions** of one photo (a face, a patch of water) → 2–3 rotated slivers
+  per print. Photos on a flatbed are near axis-aligned; upright `boundingRect`
+  is correct and simpler.
 - `fill_holes` was avoided in v2 for fear of welding pages, but the real welds
   came from over-aggressive `MORPH_CLOSE` *before* filling, plus a **seed bug**
   (flooding from `(0,0)` when a photo touches that corner fills the whole page).
@@ -139,7 +139,7 @@ corrupted the rotation choice. Keep it high.
 Always visual. Fast loop:
 
 ```bash
-.venv/bin/python src/ingest.py ~/Sync/Titi_Scans_07-24 ~/Sync/Extract --dry-run --debug
+.venv/bin/python src/ingest.py <scans> <out> --dry-run --debug
 # then montage the overlays and look at them:
 ```
 
