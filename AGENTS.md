@@ -3,6 +3,12 @@
 Engineering notes for agents working on `descan`. Read before touching
 detection or orientation.
 
+## Before pushing
+
+Run `./gate.sh` (ruff format check + lint) and make it pass before every push.
+Skip only for docs-only changes (`*.md`). CI (`.github/workflows/ci.yml`) runs
+the same two checks on push and PR.
+
 ## What this is
 
 Single-file CLI (`ingest.py`) that splits flatbed scans of loose printed photos
