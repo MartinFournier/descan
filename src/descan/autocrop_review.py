@@ -146,7 +146,7 @@ def panel(image: np.ndarray, height: int, label: str) -> np.ndarray:
 def review(
     queue: list[tuple[Path, tuple[int, int, int, int], np.ndarray]],
     args: argparse.Namespace,
-) -> int:
+) -> tuple[int, list[Path]]:
     window = "autocrop review"
     cv2.namedWindow(window, cv2.WINDOW_AUTOSIZE)
     accepted = 0

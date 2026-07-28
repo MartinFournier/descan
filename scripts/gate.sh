@@ -16,4 +16,8 @@ echo "==> ruff format --check"
 echo "==> ruff check"
 "$RUFF" check .
 
+echo "==> mypy"
+if [ -x .venv/bin/mypy ]; then MYPY=.venv/bin/mypy; else MYPY=mypy; fi
+"$MYPY" -p descan
+
 echo "OK: gate passed"
