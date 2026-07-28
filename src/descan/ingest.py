@@ -196,7 +196,7 @@ def read_image(path: Path) -> np.ndarray:
     if image.dtype == np.uint16:
         image = (image / 257).round().astype(np.uint8)
     elif image.dtype != np.uint8:
-        image = cv2.normalize(
+        image = cv2.normalize(  # type: ignore[call-overload]
             image,
             None,
             alpha=0,
@@ -305,7 +305,7 @@ def build_detection_mask(image: np.ndarray) -> np.ndarray:
     # Close small speckle gaps, fill each photo solid, then open to drop thin
     # bridges between adjacent prints and isolated noise.
     close_size = max(3, int(short_side * 0.010)) | 1
-    foreground = cv2.morphologyEx(
+    foreground = cv2.morphologyEx(  # type: ignore[assignment]
         foreground,
         cv2.MORPH_CLOSE,
         cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (close_size, close_size)),
@@ -313,7 +313,7 @@ def build_detection_mask(image: np.ndarray) -> np.ndarray:
     foreground = fill_holes(foreground)
 
     open_size = max(3, int(short_side * 0.012)) | 1
-    foreground = cv2.morphologyEx(
+    foreground = cv2.morphologyEx(  # type: ignore[assignment]
         foreground,
         cv2.MORPH_OPEN,
         cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (open_size, open_size)),
@@ -533,14 +533,14 @@ def merge_content_bridged_boxes(
     lid_reference = float(np.percentile(lightness, 92))
     is_lid = ((lightness > lid_reference - 12.0) & (chroma < 7.0)).astype(np.uint8)
 
-    boxes = [[int(round(v)) for v in box] for box in boxes]
+    work: list[list[int]] = [[int(round(v)) for v in box] for box in boxes]
 
     changed = True
     while changed:
         changed = False
-        for i in range(len(boxes)):
-            for j in range(i + 1, len(boxes)):
-                a, b = boxes[i], boxes[j]
+        for i in range(len(work)):
+            for j in range(i + 1, len(work)):
+                a, b = work[i], work[j]
                 y_overlap = min(a[3], b[3]) - max(a[1], b[1])
                 x_overlap = min(a[2], b[2]) - max(a[0], b[0])
                 min_height = min(a[3] - a[1], b[3] - b[1])
@@ -563,19 +563,19 @@ def merge_content_bridged_boxes(
                     min(a[0], b[0]) : max(a[2], b[2]),
                 ]
                 if union.size and float(union.mean()) < 0.10:
-                    boxes[i] = [
+                    work[i] = [
                         min(a[0], b[0]),
                         min(a[1], b[1]),
                         max(a[2], b[2]),
                         max(a[3], b[3]),
                     ]
-                    boxes.pop(j)
+                    work.pop(j)
                     changed = True
                     break
             if changed:
                 break
 
-    return [tuple(float(v) for v in box) for box in boxes]
+    return [(float(b[0]), float(b[1]), float(b[2]), float(b[3])) for b in work]
 
 
 def merge_overlapping_boxes(

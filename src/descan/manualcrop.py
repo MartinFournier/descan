@@ -41,6 +41,7 @@ import argparse
 import logging
 import sys
 from pathlib import Path
+from typing import Any
 
 import cv2
 import numpy as np
@@ -148,7 +149,12 @@ def select_boxes(
         display = image.copy()
     view_h, view_w = display.shape[:2]
 
-    state = {"boxes": [], "cursor": (0, 0), "drag_from": None, "in_view": False}
+    state: dict[str, Any] = {
+        "boxes": [],
+        "cursor": (0, 0),
+        "drag_from": None,
+        "in_view": False,
+    }
 
     def on_mouse(event, x, y, flags, _param):
         x = max(0, min(view_w - 1, x))
