@@ -5,6 +5,9 @@ description = "Split, orient, and tidy the individual photos out of flatbed scan
 requires-python = ">=3.12"
 dependencies = ["opencv-python>=5", "numpy"]
 
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+
 [tool.ruff]
 line-length = 88
 target-version = "py312"
