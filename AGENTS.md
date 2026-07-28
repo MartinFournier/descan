@@ -20,13 +20,15 @@ Modules cross-import as `from descan.ingest import ...`; all share `ingest.py`'s
 image IO (`read_image`, `write_png`, `find_input_files`) and its YuNet
 orientation. The YuNet model is package data at `src/descan/assets/`.
 
-`[project.scripts]` maps each module's `main()` to a command:
+`cli.py` is the unified `descan <command>` dispatcher (and `--version`).
+`[project.scripts]` also maps each module's `main()` to a direct command:
 
 - `descan-split` = `ingest.py` — auto detect + split + orient (the core; the
   notes below are it).
 - `descan-trim` = `autocrop_review.py` — GUI, trim white lid margins.
 - `descan-crop` = `manualcrop.py` — GUI, draw boxes for missed/mis-split photos.
 - `descan-rename` = `rename_photos.py` — dated renaming from `.xmp`/EXIF.
+- `descan-montage` = `montage.py` — tile a directory of images into one grid.
 
 ## Environment gotchas
 
@@ -85,9 +87,9 @@ in texture and flips wrongly).
 
 ## Verifying
 
-Visual. Dry-run with `--debug`, then montage the `*_detections.png` overlays into
-a grid and look — faster than logs. Log sanity: max `faces=` small; spread of
-`orientation +N`.
+Visual. `descan-split <scans> <out> --dry-run --debug`, then `descan-montage
+<out>/debug` to tile the `*_detections.png` overlays into one grid and look —
+faster than logs. Log sanity: max `faces=` small; spread of `orientation +N`.
 
 ## Known gaps
 
