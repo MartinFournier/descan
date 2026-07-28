@@ -6,9 +6,13 @@ detection or orientation.
 ## Before pushing
 
 Run `./scripts/gate.sh` (ruff format check + lint) and make it pass before every
-push.
-Skip only for docs-only changes (`*.md`). CI (`.github/workflows/ci.yml`) runs
-the same two checks on push and PR.
+push. Skip only for docs-only changes (`*.md`). CI (`.github/workflows/ci.yml`)
+runs the same two checks on push and PR.
+
+## Conventions
+
+- Commit messages: terse, no `Co-Authored-By` trailer.
+- Keep all docs (README, AGENTS, docstrings) concise and terse.
 
 ## What this is
 

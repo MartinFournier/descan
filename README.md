@@ -73,16 +73,17 @@ means skip.
 
 ```bash
 python src/rename_photos.py ~/Out                                   # dry run
-python src/rename_photos.py ~/Out --apply --name Denise             # do it
+python src/rename_photos.py ~/Out --apply --name Grandma            # do it
 python src/rename_photos.py ~/Out --apply --fallback-date 1994-01-01
 ```
 
 Renames to `YYYY-MM-DD__<Name>_pNNN__<clean>.ext`, numbered `pNNN` in ascending
 capture-date order. Date comes from each photo's `.xmp` sidecar (or EXIF) via
-`exiftool`, and the sidecar is renamed alongside. The name is cleaned (`titi`,
-`_pNN`, `2x/3x`, `_1` stripped, so `titi_3x_famille_p02` becomes `famille`).
-Undated files use `--fallback-date` (or `0000-00-00`) and are reported.
-Re-running is idempotent and re-sequences after adds or deletes.
+`exiftool`, and the sidecar is renamed alongside. The name is cleaned: crop
+suffixes (`_pNN`), sheet markers (`2x/3x`), and trailing `_1` are stripped, so
+`3x_beach_p02` becomes `beach`; `--strip TOKEN` removes extra tokens (e.g.
+`--strip titi`). Undated files use `--fallback-date` (or `0000-00-00`) and are
+reported. Re-running is idempotent and re-sequences after adds or deletes.
 
 ## Development
 

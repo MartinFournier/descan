@@ -7,17 +7,17 @@ own EXIF if there is no sidecar), via exiftool. Files are numbered ``pNNN`` in
 ascending capture-date order. Each image's sidecar is renamed alongside it so
 darktable keeps the edit history linked.
 
-The original name is cleaned: a leading ``titi_`` is dropped, as are the crop
-suffixes (``_pNN``, including repeated ones from re-splits), the ``2x/3x/4x/6x``
-sheet markers, and trailing split indices (``_1``, ``_2`` ...).
+The original name is cleaned: crop suffixes (``_pNN``, including repeated ones
+from re-splits), the ``2x/3x/4x/6x`` sheet markers, trailing split indices
+(``_1``, ``_2`` ...), and any tokens passed with ``--strip`` are removed.
 
-    titi_3x_famille_p02.png (+ .xmp)   -> 1994-08-28__Denise_p007__famille.png (+ .xmp)
-    titi_voilier_p03_p01.png           -> ...__Denise_pNNN__voilier.png
+    3x_beach_p02.png (+ .xmp)   -> 1994-08-28__Person_p007__beach.png (+ .xmp)
+    house_p03_p01.png           -> ...__Person_pNNN__house.png
 
 Re-running is safe: an already-applied ``DATE__Name_pNNN__`` prefix is stripped
 before rebuilding (no stacking), the date is re-read from the sidecar (a prior
 in-name date is used only as a fallback), and ``pNNN`` is renumbered over the
-current set — so adding or deleting files just re-sequences them.
+current set, so adding or deleting files just re-sequences them.
 
 Dry-run by default; pass --apply to actually rename.
 """
@@ -45,7 +45,14 @@ def parse_arguments() -> argparse.Namespace:
     )
     parser.add_argument("input_path", type=Path, help="Folder of photos.")
     parser.add_argument(
-        "--name", default="Denise", help="Subject name. Default: Denise."
+        "--name", default="Person", help="Subject name. Default: Person."
+    )
+    parser.add_argument(
+        "--strip",
+        action="append",
+        default=[],
+        metavar="TOKEN",
+        help="Remove this token from names, repeatable (e.g. --strip titi).",
     )
     parser.add_argument(
         "--fallback-date",
@@ -72,7 +79,7 @@ def split_applied_prefix(stem: str, name: str) -> tuple[str | None, str]:
     """
     Undo a prefix this script already applied, so re-runs are idempotent.
 
-    ``2012-01-01__Denise_p084__caraibes`` -> ("2012-01-01", "caraibes").
+    ``2012-01-01__Person_p084__beach`` -> ("2012-01-01", "beach").
     Returns (date-or-None, remaining-stem).
     """
     match = re.match(
@@ -83,12 +90,11 @@ def split_applied_prefix(stem: str, name: str) -> tuple[str | None, str]:
     return None, stem
 
 
-def clean_original(stem: str) -> str:
-    """Strip titi_, crop suffixes, sheet markers, and split indices."""
+def clean_original(stem: str, strip_tokens: tuple[str, ...] = ()) -> str:
+    """Strip crop suffixes, sheet markers, split indices, and any given tokens."""
     stem = re.sub(r"(?i)_p\d+", "", stem)  # _pNN crop suffixes (all)
-    stem = re.sub(  # the "titi" token anywhere
-        r"(?i)(?<![a-z0-9])titi(?![a-z0-9])", "", stem
-    )
+    for token in strip_tokens:  # caller-supplied tokens (e.g. a nickname)
+        stem = re.sub(rf"(?i)(?<![a-z0-9]){re.escape(token)}(?![a-z0-9])", "", stem)
     stem = re.sub(  # 2x / 3x / x6 sheet markers
         r"(?i)(?<![a-z0-9])(\d+x|x\d+)(?![a-z0-9])", "", stem
     )
@@ -215,7 +221,7 @@ def main() -> int:
 
     for offset, image in enumerate(ordered):
         index = args.start + offset
-        base = clean_original(applied[image][1])
+        base = clean_original(applied[image][1], tuple(args.strip))
         name = (
             f"{date_of[image]}__{args.name}_p{index:03d}__{base}{image.suffix.lower()}"
         )
