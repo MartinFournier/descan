@@ -45,7 +45,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from ingest import (
+from descan.ingest import (
     SUPPORTED_EXTENSIONS,
     auto_orient_photo,
     find_input_files,

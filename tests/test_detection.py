@@ -1,6 +1,6 @@
 import numpy as np
 
-import ingest
+from descan import ingest
 
 
 def test_fill_holes_fills_enclosed_region():

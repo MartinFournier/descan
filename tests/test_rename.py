@@ -1,4 +1,4 @@
-import rename_photos as R
+from descan import rename_photos as R
 
 
 def test_clean_original_basic():

@@ -1,3 +1,15 @@
+Metadata-Version: 2.4
+Name: descan
+Version: 0.1.0
+Summary: Split, orient, and tidy the individual photos out of flatbed scans.
+License-Expression: MIT
+Requires-Python: >=3.12
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: opencv-python>=5
+Requires-Dist: numpy
+Dynamic: license-file
+
 # descan
 
 [![CI](https://github.com/MartinFournier/descan/actions/workflows/ci.yml/badge.svg)](https://github.com/MartinFournier/descan/actions/workflows/ci.yml)
@@ -10,27 +22,26 @@ own file.
 
 Run in order. The first is automatic, the rest are quick manual passes:
 
-1. **`descan-split`** splits each scan into one PNG per photo.
-2. **`descan-trim`** trims leftover white lid margins.
-3. **`descan-crop`** hand-fixes misses and bad splits.
-4. **`descan-rename`** writes dated, ordered filenames.
+1. **`ingest.py`** splits each scan into one PNG per photo.
+2. **`autocrop_review.py`** trims leftover white lid margins.
+3. **`manualcrop.py`** hand-fixes misses and bad splits.
+4. **`rename_photos.py`** writes dated, ordered filenames.
 
 ## Setup
 
 ```bash
 python -m venv .venv
-.venv/bin/pip install -e .
+.venv/bin/pip install -r requirements.txt
 ```
 
-Installs the `descan-split`, `descan-trim`, `descan-crop`, and `descan-rename`
-commands. Python 3.14 (see `.python-version`); the YuNet model ships inside the
-package. `descan-rename` also needs the `exiftool` system package on PATH.
+Python 3.14 (see `.python-version`). The YuNet face model ships in `assets/`.
+`rename_photos.py` also needs the `exiftool` system package on PATH.
 
-## `descan-split`
+## `ingest.py` (split)
 
 ```bash
-descan-split ~/Scans ~/Out --dry-run --debug   # preview, overlays in Out/debug
-descan-split ~/Scans ~/Out                     # write crops
+python src/ingest.py ~/Scans ~/Out --dry-run --debug   # preview, overlays in Out/debug
+python src/ingest.py ~/Scans ~/Out                     # write crops
 ```
 
 Each photo is written whole (not cropped or deskewed) as `<scan>_pNN.png`, then
@@ -49,21 +60,21 @@ run.
 | `--processing-size PX` | Detection resolution (`1200`); output is full-res. |
 | `--overwrite` / `--recursive` / `--verbose` | As named. |
 
-## `descan-trim`
+## `autocrop_review.py` (trim white margins)
 
 ```bash
-descan-trim ~/Out
+python src/autocrop_review.py ~/Out
 ```
 
 Shows only crops it would change, original beside trim. **y** accept, **n**
 skip, **f** flag, **q** quit. Flagged files move to `to-split/` for the next
 step.
 
-## `descan-crop`
+## `manualcrop.py` (hand-fix)
 
 ```bash
-descan-crop ~/Scans/one.png ~/Out              # draw boxes on a scan
-descan-crop ~/Out/to-split ~/Out --replace     # re-split bad crops in place
+python src/manualcrop.py ~/Scans/one.png ~/Out              # draw boxes on a scan
+python src/manualcrop.py ~/Out/to-split ~/Out --replace     # re-split bad crops in place
 ```
 
 Drag boxes; a full-window crosshair gives precise corners. **u** undo, **c**
@@ -72,12 +83,12 @@ after existing crops. `--replace` deletes the original and writes its `_pNN`
 pieces (skipped files untouched). A directory argument walks each image; no box
 means skip.
 
-## `descan-rename`
+## `rename_photos.py` (rename with dates)
 
 ```bash
-descan-rename ~/Out                                   # dry run
-descan-rename ~/Out --apply --name Grandma            # do it
-descan-rename ~/Out --apply --fallback-date 1994-01-01
+python src/rename_photos.py ~/Out                                   # dry run
+python src/rename_photos.py ~/Out --apply --name Grandma            # do it
+python src/rename_photos.py ~/Out --apply --fallback-date 1994-01-01
 ```
 
 Renames to `YYYY-MM-DD__<Name>_pNNN__<clean>.ext`, numbered `pNNN` in ascending
@@ -91,7 +102,7 @@ reported. Re-running is idempotent and re-sequences after adds or deletes.
 ## Development
 
 ```bash
-pip install -e ".[dev]"
+pip install -r requirements-dev.txt
 ./scripts/gate.sh            # ruff format --check + ruff check (run before pushing)
 pytest                       # tests
 ```
@@ -101,9 +112,8 @@ full engineering rationale live in [AGENTS.md](AGENTS.md).
 
 ## Credits
 
-Face detection uses the YuNet model
-(`src/descan/assets/face_detection_yunet_2023mar.onnx`) from
-[opencv_zoo](https://github.com/opencv/opencv_zoo/tree/main/models/face_detection_yunet),
+Face detection uses the YuNet model (`assets/face_detection_yunet_2023mar.onnx`)
+from [opencv_zoo](https://github.com/opencv/opencv_zoo/tree/main/models/face_detection_yunet),
 MIT licensed, copyright Shiqi Yu (full text in
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)).
 
@@ -112,5 +122,5 @@ MIT licensed, copyright Shiqi Yu (full text in
 Vibe coded, tuned against one person's scans, provided as-is (see
 [LICENSE](LICENSE)). It can crop wrong, miss photos, or mis-orient them. Keep
 your originals and review output before deleting anything. Input scans are never
-modified, but `descan-crop --replace` and `descan-trim` overwrite or delete
-*crops* on purpose.
+modified, but `manualcrop.py --replace` and `autocrop_review.py` overwrite or
+delete *crops* on purpose.

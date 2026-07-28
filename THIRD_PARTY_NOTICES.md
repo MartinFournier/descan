@@ -2,7 +2,7 @@
 
 ## YuNet face detection model
 
-`assets/face_detection_yunet_2023mar.onnx`, from
+`src/descan/assets/face_detection_yunet_2023mar.onnx`, from
 [opencv_zoo](https://github.com/opencv/opencv_zoo/tree/main/models/face_detection_yunet).
 
 ```
