@@ -1,0 +1,14 @@
+# Normalize line endings; Git decides text vs binary, then forces LF on text.
+* text=auto eol=lf
+
+*.py   text eol=lf
+*.md   text eol=lf
+*.txt  text eol=lf
+
+# Binary assets — never munge.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.tif  binary
+*.tiff binary
+*.onnx binary
