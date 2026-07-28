@@ -19,7 +19,7 @@ Flagged files are moved into a ``to-split/`` subfolder, ready to re-split with
 ``manualcrop.py <folder>/to-split <folder> --replace``.
 
 Example:
-    python autocrop_review.py ~/Photos/split
+    descan-trim ~/Photos/split
 """
 
 from __future__ import annotations

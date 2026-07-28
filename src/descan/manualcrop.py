@@ -26,13 +26,13 @@ deleted and replaced by its ``_pNN`` pieces. Files you skip are left alone.
 
 Example:
     # split a whole scan
-    python manualcrop.py ~/Scans/scan.png ~/Photos/split
+    descan-crop ~/Scans/scan.png ~/Photos/split
 
     # walk a folder of scans
-    python manualcrop.py ~/Scans ~/Photos/split --recursive
+    descan-crop ~/Scans ~/Photos/split --recursive
 
     # re-split crops that still contain two photos, in place
-    python manualcrop.py ~/Photos/to_fix ~/Photos/to_fix --replace
+    descan-crop ~/Photos/to_fix ~/Photos/to_fix --replace
 """
 
 from __future__ import annotations

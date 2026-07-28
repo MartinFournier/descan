@@ -13,10 +13,7 @@ Features:
 - Can produce annotated debug images.
 
 Example:
-    python ingest.py ~/Scans ~/Photos/split --debug
-
-Dependencies:
-    python -m pip install "opencv-python>=5" numpy
+    descan-split ~/Scans ~/Photos/split --debug
 """
 
 from __future__ import annotations
