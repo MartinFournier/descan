@@ -1,9 +1,30 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "descan"
 version = "0.1.0"
 description = "Split, orient, and tidy the individual photos out of flatbed scans."
+readme = "README.md"
+license = "MIT"
 requires-python = ">=3.12"
 dependencies = ["opencv-python>=5", "numpy"]
+
+[project.optional-dependencies]
+dev = ["ruff==0.16.0", "pytest==8.4.2"]
+
+[project.scripts]
+descan-split = "descan.ingest:main"
+descan-trim = "descan.autocrop_review:main"
+descan-crop = "descan.manualcrop:main"
+descan-rename = "descan.rename_photos:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+descan = ["assets/*.onnx"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

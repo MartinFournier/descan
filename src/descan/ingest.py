@@ -657,12 +657,10 @@ def load_face_detector() -> cv2.FaceDetectorYN | None:
 
     OpenCV 5 removed the legacy Haar ``CascadeClassifier`` from the Python
     build, so orientation uses the bundled YuNet model instead. The ONNX file
-    is vendored in the repo's ``assets/`` directory.
+    is vendored in the package's ``assets/`` directory.
     """
     model_path = (
-        Path(__file__).resolve().parent.parent
-        / "assets"
-        / "face_detection_yunet_2023mar.onnx"
+        Path(__file__).resolve().parent / "assets" / "face_detection_yunet_2023mar.onnx"
     )
 
     if not model_path.exists():

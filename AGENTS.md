@@ -15,14 +15,18 @@ docs-only changes (`*.md`). CI runs the same two checks.
 
 ## Layout
 
-Scripts live in `src/`; run them directly (`python src/ingest.py ...`) so `src/`
-is on the path and the others can `import ingest`. All share `ingest.py`'s image
-IO (`read_image`, `write_png`, `find_input_files`) and its YuNet orientation.
+Installable package `descan` under `src/descan/` (`pip install -e ".[dev]"`).
+Modules cross-import as `from descan.ingest import ...`; all share `ingest.py`'s
+image IO (`read_image`, `write_png`, `find_input_files`) and its YuNet
+orientation. The YuNet model is package data at `src/descan/assets/`.
 
-- `ingest.py` — auto detect + split + orient (the core; the notes below are it).
-- `autocrop_review.py` — GUI, trim white lid margins.
-- `manualcrop.py` — GUI, draw boxes for missed/mis-split photos.
-- `rename_photos.py` — dated renaming from `.xmp`/EXIF via exiftool.
+`[project.scripts]` maps each module's `main()` to a command:
+
+- `descan-split` = `ingest.py` — auto detect + split + orient (the core; the
+  notes below are it).
+- `descan-trim` = `autocrop_review.py` — GUI, trim white lid margins.
+- `descan-crop` = `manualcrop.py` — GUI, draw boxes for missed/mis-split photos.
+- `descan-rename` = `rename_photos.py` — dated renaming from `.xmp`/EXIF.
 
 ## Environment gotchas
 

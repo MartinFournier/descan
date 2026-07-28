@@ -1,6 +1,6 @@
 import numpy as np
 
-import autocrop_review
+from descan import autocrop_review
 
 
 def test_trim_box_peels_white_side():
