@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Engineering notes for agents working on `ingest-scans`. Read before touching
+Engineering notes for agents working on `descan`. Read before touching
 detection or orientation.
 
 ## What this is

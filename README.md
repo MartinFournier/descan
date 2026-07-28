@@ -1,4 +1,4 @@
-# ingest-scans
+# descan
 
 Detect, deskew, crop, orient, and split the individual printed photos out of
 flatbed-scanner images. A single scan usually holds several loose prints laid on

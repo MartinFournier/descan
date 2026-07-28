@@ -1,3 +1,10 @@
+[project]
+name = "descan"
+version = "0.1.0"
+description = "Split, orient, and tidy the individual photos out of flatbed scans."
+requires-python = ">=3.12"
+dependencies = ["opencv-python>=5", "numpy"]
+
 [tool.ruff]
 line-length = 88
 target-version = "py312"
