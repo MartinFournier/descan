@@ -11,9 +11,18 @@ the same two checks on push and PR.
 
 ## What this is
 
-Single-file CLI (`ingest.py`) that splits flatbed scans of loose printed photos
-into one PNG per photo. Originally ChatGPT-generated; the detection and
-orientation stages were rewritten (see history below).
+A small suite for turning flatbed scans of loose prints into one PNG per photo.
+`ingest.py` was originally ChatGPT-generated; its detection and orientation
+stages were then rewritten (history below). The rest are manual clean-up tools.
+
+- `ingest.py` — automatic detect + split + orient (the core; this file is what
+  the notes below are about).
+- `autocrop_review.py` — GUI to trim leftover white lid margins.
+- `manualcrop.py` — GUI to draw boxes for missed/mis-split photos.
+- `rename_photos.py` — date-prefixed renaming from `.xmp`/EXIF via exiftool.
+
+All share `ingest.py`'s image IO (`read_image`, `write_png`, `find_input_files`)
+and its YuNet orientation.
 
 ## Environment (important, non-obvious)
 

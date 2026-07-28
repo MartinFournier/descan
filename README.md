@@ -1,8 +1,8 @@
 # descan
 
-Detect, deskew, crop, orient, and split the individual printed photos out of
-flatbed-scanner images. A single scan usually holds several loose prints laid on
-the glass; this produces one clean PNG per photo.
+Split the individual printed photos out of flatbed scans — one auto-oriented
+PNG per photo. A single scan usually holds several loose prints laid on the
+glass; `descan` finds each one and writes it to its own file.
 
 ## Use at your own risk
 
@@ -14,7 +14,19 @@ review it before deleting anything.** The tools never modify input scans, but
 `manualcrop.py --replace` and `autocrop_review.py` do overwrite/delete crops on
 purpose — read what each does first.
 
-## What it does
+## The pipeline
+
+Four small tools, run in order. Only the first is fully automatic; the rest are
+quick manual clean-up passes over the results.
+
+1. **`ingest.py`** — split every scan into one PNG per photo. *(automatic)*
+2. **`autocrop_review.py`** — trim leftover white scanner-lid margins.
+3. **`manualcrop.py`** — hand-fix the few the detector missed or mis-split.
+4. **`rename_photos.py`** — rename to dated, ordered filenames.
+
+Each has its own section below.
+
+## Split scans — `ingest.py`
 
 For every image in the input directory:
 
@@ -42,7 +54,9 @@ python -m venv .venv
 .venv/bin/pip install "opencv-python>=5" numpy
 ```
 
-The YuNet face model ships in `assets/`. No other data files are needed.
+The YuNet face model ships in `assets/`. `rename_photos.py` also needs
+`exiftool` on your PATH (e.g. `dnf install perl-Image-ExifTool`); the other
+tools don't.
 
 ## Usage
 
@@ -73,38 +87,11 @@ before a real run.
 | `--recursive` | Walk subdirectories. |
 | `--verbose` | Extra logging. |
 
-## Manual cropping
-
-For the few photos the detector misses or mis-splits (very faded/low-contrast
-prints, or a photo whose bright sky looks like a gap), draw the boxes by hand:
-
-```bash
-python manualcrop.py ~/Scans/titi_mariage.png ~/Photos/split
-```
-
-Drag a box around each photo (a thin full-window **crosshair** tracks the cursor
-for pixel-accurate corners); **u** undoes the last box, **c** clears, **ENTER**
-or **ESC** finishes the image. Each box is saved as `<stem>_pNN.png`,
-auto-oriented the same way as `ingest.py`. New
-crops are numbered *after* any existing ones for that scan, so they add to the
-automatic output rather than replacing it (use `--overwrite` to renumber from
-p01). A directory argument walks every image in turn (`[3/12] name`); drawing no
-box leaves that file untouched.
-
-**Re-splitting crops that still hold two photos** (`--replace`): point it at the
-folder of crops, using the same folder as output. Draw a box around each real
-photo; the original is deleted and replaced by its `_pNN` pieces. Skipped files
-(no box drawn) are left as they are.
-
-```bash
-python manualcrop.py ~/Photos/to_fix ~/Photos/to_fix --replace
-```
-
-## Trimming leftover white margins
+## Trim white margins — `autocrop_review.py`
 
 Some crops keep a large white block on one side where the box overshot into the
-scanner lid. `autocrop_review.py` peels flat white lid margins off each edge and
-lets you approve each suggestion:
+scanner lid. This peels flat white lid margins off each edge and lets you
+approve each suggestion:
 
 ```bash
 python autocrop_review.py ~/Photos/split
@@ -112,14 +99,34 @@ python autocrop_review.py ~/Photos/split
 
 Only crops it would actually change are shown — original on the left, trim on the
 right. Keys: **y**/ENTER accept (overwrites the file), **n** skip, **f** flag for
-manual cropping, **q** quit. Flagged files are moved into a `to-split/` subfolder,
-ready to re-split by hand:
+manual cropping, **q** quit. Flagged files are moved into a `to-split/` subfolder
+for the next step.
+
+## Hand-fix misses — `manualcrop.py`
+
+For the few photos the detector missed or mis-split (very faded/low-contrast
+prints, or a photo whose bright sky looks like a gap), draw the boxes by hand:
+
+```bash
+python manualcrop.py ~/Scans/titi_mariage.png ~/Photos/split
+```
+
+Drag a box around each photo — a thin full-window **crosshair** tracks the cursor
+for pixel-accurate corners. **u** undoes the last box, **c** clears, **ENTER**/
+**ESC** finishes. Each box is saved as `<stem>_pNN.png`, auto-oriented like
+`ingest.py`, and numbered *after* any existing crops (so it adds to the automatic
+output; `--overwrite` renumbers from p01). A directory argument walks every image
+in turn (`[3/12] name`); drawing no box leaves that file untouched.
+
+**Re-split crops that still hold two photos** (`--replace`) — e.g. the
+`to-split/` folder from the trim step. Output to the same folder; draw a box
+around each real photo and the original is replaced by its `_pNN` pieces:
 
 ```bash
 python manualcrop.py ~/Photos/split/to-split ~/Photos/split --replace
 ```
 
-## Renaming with dates
+## Rename with dates — `rename_photos.py`
 
 Once dates are set (e.g. in darktable, which writes a `.xmp` sidecar per photo),
 `rename_photos.py` renames files to
