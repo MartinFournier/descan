@@ -4,6 +4,16 @@ Detect, deskew, crop, orient, and split the individual printed photos out of
 flatbed-scanner images. A single scan usually holds several loose prints laid on
 the glass; this produces one clean PNG per photo.
 
+## Use at your own risk
+
+This project was vibe coded — built quickly and iteratively with an AI
+assistant, tuned against one person's scan collection. It is provided as-is,
+with no guarantees (see [LICENSE](LICENSE)). It can crop wrong, miss photos, or
+mis-orient them. **Keep your original scans; treat all output as disposable and
+review it before deleting anything.** The tools never modify input scans, but
+`manualcrop.py --replace` and `autocrop_review.py` do overwrite/delete crops on
+purpose — read what each does first.
+
 ## What it does
 
 For every image in the input directory:
