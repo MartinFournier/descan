@@ -2,7 +2,7 @@
 # Pre-push gate: formatting and lint must be clean.
 # Run before every push (skip only for docs-only changes). CI runs the same.
 set -euo pipefail
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/.."   # repo root
 
 if [ -x .venv/bin/ruff ]; then
     RUFF=.venv/bin/ruff

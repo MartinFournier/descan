@@ -26,8 +26,8 @@ The YuNet face model ships in `assets/`. `rename_photos.py` also needs
 ## `ingest.py` (split)
 
 ```bash
-python ingest.py ~/Scans ~/Out --dry-run --debug   # preview, overlays in Out/debug
-python ingest.py ~/Scans ~/Out                     # write crops
+python src/ingest.py ~/Scans ~/Out --dry-run --debug   # preview, overlays in Out/debug
+python src/ingest.py ~/Scans ~/Out                     # write crops
 ```
 
 Each photo is written whole (not cropped or deskewed) as `<scan>_pNN.png`, then
@@ -49,7 +49,7 @@ run.
 ## `autocrop_review.py` (trim white margins)
 
 ```bash
-python autocrop_review.py ~/Out
+python src/autocrop_review.py ~/Out
 ```
 
 Shows only crops it would change, original beside trim. **y** accept, **n**
@@ -59,8 +59,8 @@ step.
 ## `manualcrop.py` (hand-fix)
 
 ```bash
-python manualcrop.py ~/Scans/one.png ~/Out              # draw boxes on a scan
-python manualcrop.py ~/Out/to-split ~/Out --replace     # re-split bad crops in place
+python src/manualcrop.py ~/Scans/one.png ~/Out              # draw boxes on a scan
+python src/manualcrop.py ~/Out/to-split ~/Out --replace     # re-split bad crops in place
 ```
 
 Drag boxes; a full-window crosshair gives precise corners. **u** undo, **c**
@@ -72,9 +72,9 @@ means skip.
 ## `rename_photos.py` (rename with dates)
 
 ```bash
-python rename_photos.py ~/Out                                   # dry run
-python rename_photos.py ~/Out --apply --name Denise             # do it
-python rename_photos.py ~/Out --apply --fallback-date 1994-01-01
+python src/rename_photos.py ~/Out                                   # dry run
+python src/rename_photos.py ~/Out --apply --name Denise             # do it
+python src/rename_photos.py ~/Out --apply --fallback-date 1994-01-01
 ```
 
 Renames to `YYYY-MM-DD__<Name>_pNNN__<clean>.ext`, numbered `pNNN` in ascending
@@ -88,7 +88,7 @@ Re-running is idempotent and re-sequences after adds or deletes.
 
 ```bash
 pip install ruff
-./gate.sh            # ruff format --check + ruff check (run before pushing)
+./scripts/gate.sh            # ruff format --check + ruff check (run before pushing)
 ```
 
 Detection is classical CV tuned for light prints on a light lid. Tuning and the

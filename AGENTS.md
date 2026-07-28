@@ -5,15 +5,18 @@ detection or orientation.
 
 ## Before pushing
 
-Run `./gate.sh` (ruff format check + lint) and make it pass before every push.
+Run `./scripts/gate.sh` (ruff format check + lint) and make it pass before every
+push.
 Skip only for docs-only changes (`*.md`). CI (`.github/workflows/ci.yml`) runs
 the same two checks on push and PR.
 
 ## What this is
 
 A small suite for turning flatbed scans of loose prints into one PNG per photo.
-`ingest.py` was originally ChatGPT-generated; its detection and orientation
-stages were then rewritten (history below). The rest are manual clean-up tools.
+Scripts live in `src/`; run them directly (`python src/ingest.py ...`), which
+puts `src/` on the path so the others can `import ingest`. `ingest.py` was
+originally ChatGPT-generated; its detection and orientation stages were then
+rewritten (history below). The rest are manual clean-up tools.
 
 - `ingest.py` — automatic detect + split + orient (the core; this file is what
   the notes below are about).
@@ -136,7 +139,7 @@ corrupted the rotation choice. Keep it high.
 Always visual. Fast loop:
 
 ```bash
-.venv/bin/python ingest.py ~/Sync/Titi_Scans_07-24 ~/Sync/Extract --dry-run --debug
+.venv/bin/python src/ingest.py ~/Sync/Titi_Scans_07-24 ~/Sync/Extract --dry-run --debug
 # then montage the overlays and look at them:
 ```
 
