@@ -1,5 +1,7 @@
 # descan
 
+[![CI](https://github.com/MartinFournier/descan/actions/workflows/ci.yml/badge.svg)](https://github.com/MartinFournier/descan/actions/workflows/ci.yml)
+
 Split the individual photos out of flatbed scans into one auto-oriented PNG per
 photo. One scan usually holds several loose prints; `descan` writes each to its
 own file.
@@ -17,11 +19,11 @@ Run in order. The first is automatic, the rest are quick manual passes:
 
 ```bash
 python -m venv .venv
-.venv/bin/pip install "opencv-python>=5" numpy
+.venv/bin/pip install -r requirements.txt
 ```
 
-The YuNet face model ships in `assets/`. `rename_photos.py` also needs
-`exiftool` on PATH.
+Python 3.14 (see `.python-version`). The YuNet face model ships in `assets/`.
+`rename_photos.py` also needs the `exiftool` system package on PATH.
 
 ## `ingest.py` (split)
 
@@ -88,7 +90,7 @@ reported. Re-running is idempotent and re-sequences after adds or deletes.
 ## Development
 
 ```bash
-pip install ruff
+pip install -r requirements-dev.txt
 ./scripts/gate.sh            # ruff format --check + ruff check (run before pushing)
 ```
 

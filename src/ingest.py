@@ -54,7 +54,7 @@ class Detection:
 
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Detect, deskew, crop, and split photos from flatbed scans."
+        description="Split the individual photos out of flatbed scans."
     )
 
     parser.add_argument(
@@ -93,16 +93,6 @@ def parse_arguments() -> argparse.Namespace:
         help=(
             "Extra margin retained around each detected photo, relative to "
             "the scan's shorter dimension. Default: 0.003."
-        ),
-    )
-    parser.add_argument(
-        "--background-threshold",
-        type=float,
-        default=20.0,
-        metavar="VALUE",
-        help=(
-            "Lab-colour distance used to separate photos from the scanner "
-            "background. Lower values are more sensitive. Default: 20."
         ),
     )
     parser.add_argument(
@@ -273,10 +263,7 @@ def fill_holes(mask: np.ndarray) -> np.ndarray:
     return mask | cv2.bitwise_not(background)
 
 
-def build_detection_mask(
-    image: np.ndarray,
-    background_threshold: float,
-) -> np.ndarray:
+def build_detection_mask(image: np.ndarray) -> np.ndarray:
     """
     Build a mask whose connected components are individual printed photos.
 
@@ -342,7 +329,6 @@ def find_photo_detections(
     image: np.ndarray,
     minimum_area_fraction: float,
     maximum_photos: int,
-    background_threshold: float,
     processing_size: int,
 ) -> tuple[list[Detection], np.ndarray, float]:
     """Detect candidate printed-photo rectangles."""
@@ -350,7 +336,7 @@ def find_photo_detections(
     working_height, working_width = working.shape[:2]
     image_area = float(working_width * working_height)
 
-    mask = build_detection_mask(working, background_threshold)
+    mask = build_detection_mask(working)
 
     component_count, labels, stats, _ = cv2.connectedComponentsWithStats(
         mask,
@@ -887,7 +873,6 @@ def process_scan(
         image=image,
         minimum_area_fraction=args.min_area,
         maximum_photos=args.max_photos,
-        background_threshold=args.background_threshold,
         processing_size=args.processing_size,
     )
 
