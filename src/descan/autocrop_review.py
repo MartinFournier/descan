@@ -32,7 +32,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from descan.ingest import SUPPORTED_EXTENSIONS, find_input_files, read_image, write_png
+from descan.imageio import SUPPORTED_EXTENSIONS, find_input_files, read_image, write_png
 
 
 def parse_arguments() -> argparse.Namespace:

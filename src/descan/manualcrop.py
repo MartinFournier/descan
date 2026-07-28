@@ -46,14 +46,16 @@ from typing import Any
 import cv2
 import numpy as np
 
-from descan.ingest import (
+from descan.imageio import (
     SUPPORTED_EXTENSIONS,
-    auto_orient_photo,
     find_input_files,
-    load_face_detector,
     read_image,
-    rotate_right_angle,
     write_png,
+)
+from descan.orient import (
+    auto_orient_photo,
+    load_face_detector,
+    rotate_right_angle,
 )
 
 

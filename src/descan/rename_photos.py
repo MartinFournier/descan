@@ -32,7 +32,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from descan.ingest import find_input_files
+from descan.imageio import find_input_files
 
 # EXIF/XMP tags tried in order for a capture date.
 DATE_TAGS = ["DateTimeOriginal", "CreateDate", "DateCreated", "MediaCreateDate"]

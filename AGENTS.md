@@ -16,9 +16,16 @@ docs-only changes (`*.md`). CI runs the same two checks.
 ## Layout
 
 Installable package `descan` under `src/descan/` (`pip install -e ".[dev]"`).
-Modules cross-import as `from descan.ingest import ...`; all share `ingest.py`'s
-image IO (`read_image`, `write_png`, `find_input_files`) and its YuNet
-orientation. The YuNet model is package data at `src/descan/assets/`.
+The YuNet model is package data at `src/descan/assets/`.
+
+Core split into small modules (the split pipeline is `imageio` -> `detect` ->
+`orient`, orchestrated by `ingest`):
+
+- `imageio.py` — read/write/resize, `find_input_files`, `output_path_for`.
+- `detect.py` — mask + boxes: `build_detection_mask`, `find_photo_detections`,
+  the box merges, `expand_boxes_to_lid`, `crop_bounding_box`, `make_debug_image`.
+- `orient.py` — YuNet: `load_face_detector`, `auto_orient_photo`.
+- `ingest.py` — the `descan-split` CLI (`parse_arguments`, `process_scan`, `main`).
 
 `cli.py` is the unified `descan <command>` dispatcher (and `--version`).
 `[project.scripts]` also maps each module's `main()` to a direct command:
