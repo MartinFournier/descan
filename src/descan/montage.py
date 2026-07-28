@@ -19,6 +19,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
+from descan.cliargs import add_png_compression
 from descan.imageio import read_image, write_png
 
 
@@ -44,14 +45,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         "--tile-height", type=int, default=300, help="Tile height px. Default: 300."
     )
-    parser.add_argument(
-        "--png-compression",
-        type=int,
-        choices=range(0, 10),
-        default=6,
-        metavar="0-9",
-        help="PNG compression level. Default: 6.",
-    )
+    add_png_compression(parser)
     return parser.parse_args()
 
 

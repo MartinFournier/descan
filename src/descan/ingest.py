@@ -26,6 +26,7 @@ from pathlib import Path
 import cv2
 from tqdm import tqdm
 
+from descan.cliargs import add_png_compression, add_recursive
 from descan.detect import (
     crop_bounding_box,
     find_photo_detections,
@@ -59,11 +60,7 @@ def parse_arguments() -> argparse.Namespace:
         type=Path,
         help="Directory in which split PNG files will be written.",
     )
-    parser.add_argument(
-        "--recursive",
-        action="store_true",
-        help="Process subdirectories recursively.",
-    )
+    add_recursive(parser)
     parser.add_argument(
         "--min-area",
         type=float,
@@ -110,17 +107,7 @@ def parse_arguments() -> argparse.Namespace:
             "Normally their detected orientation is preserved."
         ),
     )
-    parser.add_argument(
-        "--png-compression",
-        type=int,
-        choices=range(0, 10),
-        default=6,
-        metavar="0-9",
-        help=(
-            "PNG compression level. All levels are lossless; higher values "
-            "take longer and generally produce smaller files. Default: 6."
-        ),
-    )
+    add_png_compression(parser)
     parser.add_argument(
         "--debug",
         action="store_true",

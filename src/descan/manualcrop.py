@@ -46,6 +46,7 @@ from typing import Any
 import cv2
 import numpy as np
 
+from descan.cliargs import add_png_compression, add_recursive
 from descan.imageio import (
     SUPPORTED_EXTENSIONS,
     find_input_files,
@@ -65,11 +66,7 @@ def parse_arguments() -> argparse.Namespace:
     )
     parser.add_argument("input_path", type=Path, help="Scan file or directory.")
     parser.add_argument("output_directory", type=Path, help="Directory for the crops.")
-    parser.add_argument(
-        "--recursive",
-        action="store_true",
-        help="When input is a directory, recurse into subdirectories.",
-    )
+    add_recursive(parser)
     parser.add_argument(
         "--display-size",
         type=int,
@@ -88,14 +85,7 @@ def parse_arguments() -> argparse.Namespace:
         action="store_true",
         help="Rotate portrait crops to landscape when no face decides it.",
     )
-    parser.add_argument(
-        "--png-compression",
-        type=int,
-        choices=range(0, 10),
-        default=6,
-        metavar="0-9",
-        help="PNG compression level (lossless). Default: 6.",
-    )
+    add_png_compression(parser)
     parser.add_argument(
         "--overwrite",
         action="store_true",

@@ -32,6 +32,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from descan.cliargs import add_recursive
 from descan.imageio import find_input_files
 
 # EXIF/XMP tags tried in order for a capture date.
@@ -64,9 +65,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         "--start", type=int, default=1, help="First pNNN index. Default: 1."
     )
-    parser.add_argument(
-        "--recursive", action="store_true", help="Recurse into subdirectories."
-    )
+    add_recursive(parser)
     parser.add_argument(
         "--apply",
         action="store_true",

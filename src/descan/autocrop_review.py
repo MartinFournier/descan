@@ -32,6 +32,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
+from descan.cliargs import add_png_compression, add_recursive
 from descan.imageio import SUPPORTED_EXTENSIONS, find_input_files, read_image, write_png
 
 
@@ -40,9 +41,7 @@ def parse_arguments() -> argparse.Namespace:
         description="Review and apply auto-trim of white lid margins on crops."
     )
     parser.add_argument("input_path", type=Path, help="Crop file or directory.")
-    parser.add_argument(
-        "--recursive", action="store_true", help="Recurse into subdirectories."
-    )
+    add_recursive(parser)
     parser.add_argument(
         "--lid-lightness",
         type=float,
@@ -73,14 +72,7 @@ def parse_arguments() -> argparse.Namespace:
         metavar="PIXELS",
         help="Height of each panel in the review window. Default: 800.",
     )
-    parser.add_argument(
-        "--png-compression",
-        type=int,
-        choices=range(0, 10),
-        default=6,
-        metavar="0-9",
-        help="PNG compression level (lossless). Default: 6.",
-    )
+    add_png_compression(parser)
     return parser.parse_args()
 
 
