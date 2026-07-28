@@ -30,6 +30,7 @@ from pathlib import Path
 
 import cv2
 import numpy as np
+from tqdm import tqdm
 
 SUPPORTED_EXTENSIONS = {
     ".png",
@@ -974,7 +975,7 @@ def main() -> int:
     photos_written = 0
     failures = 0
 
-    for input_path in input_files:
+    for input_path in tqdm(input_files, unit="scan", disable=not sys.stderr.isatty()):
         try:
             detected, written = process_scan(
                 input_path,

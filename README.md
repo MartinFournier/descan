@@ -94,6 +94,7 @@ reported. Re-running is idempotent and re-sequences after adds or deletes.
 
 ```bash
 pip install -e ".[dev]"
+pre-commit install           # optional: run ruff on every commit
 ./scripts/gate.sh            # ruff format --check + ruff check (run before pushing)
 pytest                       # tests
 ```
