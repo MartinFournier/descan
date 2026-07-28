@@ -5,3 +5,8 @@ __pycache__/
 # Generated run logs (regenerate with --dry-run)
 dryrun-log.txt
 dryrun-log.original.txt
+
+# Build artifacts
+build/
+dist/
+*.egg-info/

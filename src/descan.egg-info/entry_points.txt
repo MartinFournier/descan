@@ -1,5 +1,0 @@
-[console_scripts]
-descan-crop = descan.manualcrop:main
-descan-rename = descan.rename_photos:main
-descan-split = descan.ingest:main
-descan-trim = descan.autocrop_review:main
