@@ -61,9 +61,7 @@ def parse_arguments() -> argparse.Namespace:
         description="Manually crop photos out of flatbed scans by drawing boxes."
     )
     parser.add_argument("input_path", type=Path, help="Scan file or directory.")
-    parser.add_argument(
-        "output_directory", type=Path, help="Directory for the crops."
-    )
+    parser.add_argument("output_directory", type=Path, help="Directory for the crops.")
     parser.add_argument(
         "--recursive",
         action="store_true",
@@ -247,9 +245,7 @@ def process_scan(path: Path, args: argparse.Namespace, detector) -> int:
         destination = args.output_directory / f"{path.stem}_p{index:02d}.png"
 
         if destination.exists() and not fresh:
-            logging.warning(
-                "%s: exists; skipping (use --overwrite)", destination.name
-            )
+            logging.warning("%s: exists; skipping (use --overwrite)", destination.name)
             continue
 
         cropped = image[y0:y1, x0:x1].copy()

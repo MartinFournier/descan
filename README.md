@@ -131,6 +131,17 @@ python rename_photos.py ~/Photos/split --name Denise --fallback-date 1994-01-01
 - Images with no date get `--fallback-date` (or `0000-00-00`) and are reported,
   so you can date them and re-run.
 
+## Development
+
+Lint and format with [ruff](https://docs.astral.sh/ruff/) (config in
+`pyproject.toml`):
+
+```bash
+pip install ruff
+ruff format .      # format
+ruff check --fix . # lint
+```
+
 ## Tuning notes
 
 Detection is classical CV, tuned for *light prints with white borders on a

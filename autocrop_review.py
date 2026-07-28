@@ -128,12 +128,16 @@ def trim_box(
 def panel(image: np.ndarray, height: int, label: str) -> np.ndarray:
     """Scale an image to a fixed height and add a caption bar."""
     scale = height / image.shape[0]
-    scaled = cv2.resize(
-        image, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA
-    )
+    scaled = cv2.resize(image, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
     bar = np.zeros((28, scaled.shape[1], 3), np.uint8)
     cv2.putText(
-        bar, label, (8, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1,
+        bar,
+        label,
+        (8, 20),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.6,
+        (255, 255, 255),
+        1,
         cv2.LINE_AA,
     )
     return np.vstack([bar, scaled])

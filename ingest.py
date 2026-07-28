@@ -24,13 +24,12 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Sequence
 
 import cv2
 import numpy as np
-
 
 SUPPORTED_EXTENSIONS = {
     ".png",
@@ -78,10 +77,7 @@ def parse_arguments() -> argparse.Namespace:
         type=float,
         default=0.012,
         metavar="FRACTION",
-        help=(
-            "Minimum photo area as a fraction of the complete scan. "
-            "Default: 0.012."
-        ),
+        help=("Minimum photo area as a fraction of the complete scan. Default: 0.012."),
     )
     parser.add_argument(
         "--max-photos",
@@ -200,9 +196,7 @@ def read_image(path: Path) -> np.ndarray:
         # Composite transparency against white.
         bgr = image[:, :, :3].astype(np.float32)
         alpha = image[:, :, 3:4].astype(np.float32) / 255.0
-        image = np.clip(bgr * alpha + 255.0 * (1.0 - alpha), 0, 255).astype(
-            np.uint8
-        )
+        image = np.clip(bgr * alpha + 255.0 * (1.0 - alpha), 0, 255).astype(np.uint8)
     elif image.shape[2] != 3:
         raise ValueError(f"unsupported channel count: {image.shape[2]}")
 
@@ -316,9 +310,9 @@ def build_detection_mask(
     background_lightness = float(np.median(border))
 
     # Foreground: noticeably darker than the lid, or noticeably coloured.
-    foreground = (
-        ((background_lightness - lightness) > 12.0) | (chroma > 10.0)
-    ).astype(np.uint8) * 255
+    foreground = (((background_lightness - lightness) > 12.0) | (chroma > 10.0)).astype(
+        np.uint8
+    ) * 255
 
     # Close small speckle gaps, fill each photo solid, then open to drop thin
     # bridges between adjacent prints and isolated noise.
@@ -388,10 +382,7 @@ def find_photo_detections(
 
         # A photo is a plausibly-proportioned box. The upper area bound also
         # rejects the near-full-page blob that appears when detection fails.
-        if not (
-            minimum_area_fraction < area_fraction < 0.94
-            and aspect_ratio < 6.5
-        ):
+        if not (minimum_area_fraction < area_fraction < 0.94 and aspect_ratio < 6.5):
             continue
 
         boxes.append((x, y, x + w, y + h))
@@ -473,9 +464,9 @@ def expand_boxes_to_lid(
         return boxes
 
     height, width = image.shape[:2]
-    lab = cv2.cvtColor(
-        cv2.bilateralFilter(image, 9, 50, 50), cv2.COLOR_BGR2LAB
-    ).astype(np.float32)
+    lab = cv2.cvtColor(cv2.bilateralFilter(image, 9, 50, 50), cv2.COLOR_BGR2LAB).astype(
+        np.float32
+    )
     lightness = lab[:, :, 0]
     chroma = np.abs(lab[:, :, 1] - 128.0) + np.abs(lab[:, :, 2] - 128.0)
 
@@ -495,7 +486,7 @@ def expand_boxes_to_lid(
         x0, y0, x1, y1 = (int(round(v)) for v in box)
         others = [o for j, o in enumerate(boxes) if j != index]
 
-        def hits_neighbour(nx0, ny0, nx1, ny1) -> bool:
+        def hits_neighbour(nx0, ny0, nx1, ny1, others=others) -> bool:
             for ox0, oy0, ox1, oy1 in others:
                 if not (ox1 <= nx0 or ox0 >= nx1 or oy1 <= ny0 or oy0 >= ny1):
                     return True
@@ -547,9 +538,9 @@ def merge_content_bridged_boxes(
         return boxes
 
     height, width = image.shape[:2]
-    lab = cv2.cvtColor(
-        cv2.bilateralFilter(image, 9, 50, 50), cv2.COLOR_BGR2LAB
-    ).astype(np.float32)
+    lab = cv2.cvtColor(cv2.bilateralFilter(image, 9, 50, 50), cv2.COLOR_BGR2LAB).astype(
+        np.float32
+    )
     lightness = lab[:, :, 0]
     chroma = np.abs(lab[:, :, 1] - 128.0) + np.abs(lab[:, :, 2] - 128.0)
     lid_reference = float(np.percentile(lightness, 92))
@@ -568,12 +559,14 @@ def merge_content_bridged_boxes(
                 min_height = min(a[3] - a[1], b[3] - b[1])
                 min_width = min(a[2] - a[0], b[2] - b[0])
 
-                side_by_side = y_overlap > 0.3 * min_height and (
-                    max(a[0], b[0]) - min(a[2], b[2])
-                ) < 0.15 * min_width
-                stacked = x_overlap > 0.3 * min_width and (
-                    max(a[1], b[1]) - min(a[3], b[3])
-                ) < 0.15 * min_height
+                side_by_side = (
+                    y_overlap > 0.3 * min_height
+                    and (max(a[0], b[0]) - min(a[2], b[2])) < 0.15 * min_width
+                )
+                stacked = (
+                    x_overlap > 0.3 * min_width
+                    and (max(a[1], b[1]) - min(a[3], b[3])) < 0.15 * min_height
+                )
 
                 if not (side_by_side or stacked):
                     continue
@@ -673,7 +666,7 @@ def crop_bounding_box(
     return image[y0:y1, x0:x1].copy()
 
 
-def load_face_detector() -> "cv2.FaceDetectorYN | None":
+def load_face_detector() -> cv2.FaceDetectorYN | None:
     """Load the YuNet DNN face detector used for orientation.
 
     OpenCV 5 removed the legacy Haar ``CascadeClassifier`` from the Python
@@ -681,9 +674,7 @@ def load_face_detector() -> "cv2.FaceDetectorYN | None":
     is vendored alongside this script in ``assets/``.
     """
     model_path = (
-        Path(__file__).resolve().parent
-        / "assets"
-        / "face_detection_yunet_2023mar.onnx"
+        Path(__file__).resolve().parent / "assets" / "face_detection_yunet_2023mar.onnx"
     )
 
     if not model_path.exists():
@@ -694,9 +685,7 @@ def load_face_detector() -> "cv2.FaceDetectorYN | None":
         return None
 
     if not hasattr(cv2, "FaceDetectorYN"):
-        logging.warning(
-            "cv2.FaceDetectorYN unavailable; auto-orientation is disabled"
-        )
+        logging.warning("cv2.FaceDetectorYN unavailable; auto-orientation is disabled")
         return None
 
     try:
@@ -710,7 +699,9 @@ def load_face_detector() -> "cv2.FaceDetectorYN | None":
             top_k=500,
         )
     except cv2.error as error:
-        logging.warning("Could not load face model (%s); auto-orientation is disabled", error)
+        logging.warning(
+            "Could not load face model (%s); auto-orientation is disabled", error
+        )
         return None
 
 
@@ -730,7 +721,7 @@ def rotate_right_angle(image: np.ndarray, quarter_turns: int) -> np.ndarray:
 
 def face_orientation_score(
     image: np.ndarray,
-    detector: "cv2.FaceDetectorYN",
+    detector: cv2.FaceDetectorYN,
 ) -> tuple[float, int]:
     """
     Score how likely an image is upright based on frontal-face detections.
@@ -773,7 +764,7 @@ def face_orientation_score(
 
 def auto_orient_photo(
     image: np.ndarray,
-    detector: "cv2.FaceDetectorYN | None",
+    detector: cv2.FaceDetectorYN | None,
     always_landscape: bool,
 ) -> tuple[np.ndarray, int, int]:
     """
@@ -807,8 +798,7 @@ def auto_orient_photo(
     second_score = results[1][0]
 
     clearly_better_than_second = (
-        best_score >= second_score * 1.15
-        or best_score - second_score >= 0.75
+        best_score >= second_score * 1.15 or best_score - second_score >= 0.75
     )
     clearly_better_than_original = (
         best_turns == 0
@@ -880,7 +870,7 @@ def process_scan(
     input_path: Path,
     output_directory: Path,
     args: argparse.Namespace,
-    face_detector: "cv2.FaceDetectorYN | None",
+    face_detector: cv2.FaceDetectorYN | None,
 ) -> tuple[int, int]:
     """
     Process one scanner image.

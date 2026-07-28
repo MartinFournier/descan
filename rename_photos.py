@@ -44,7 +44,9 @@ def parse_arguments() -> argparse.Namespace:
         description="Rename photos (and darktable .xmp sidecars) with a date prefix."
     )
     parser.add_argument("input_path", type=Path, help="Folder of photos.")
-    parser.add_argument("--name", default="Denise", help="Subject name. Default: Denise.")
+    parser.add_argument(
+        "--name", default="Denise", help="Subject name. Default: Denise."
+    )
     parser.add_argument(
         "--fallback-date",
         default=None,
@@ -83,14 +85,14 @@ def split_applied_prefix(stem: str, name: str) -> tuple[str | None, str]:
 
 def clean_original(stem: str) -> str:
     """Strip titi_, crop suffixes, sheet markers, and split indices."""
-    stem = re.sub(r"(?i)_p\d+", "", stem)           # _pNN crop suffixes (all)
-    stem = re.sub(                                  # the "titi" token anywhere
+    stem = re.sub(r"(?i)_p\d+", "", stem)  # _pNN crop suffixes (all)
+    stem = re.sub(  # the "titi" token anywhere
         r"(?i)(?<![a-z0-9])titi(?![a-z0-9])", "", stem
     )
-    stem = re.sub(                                  # 2x / 3x / x6 sheet markers
+    stem = re.sub(  # 2x / 3x / x6 sheet markers
         r"(?i)(?<![a-z0-9])(\d+x|x\d+)(?![a-z0-9])", "", stem
     )
-    stem = re.sub(r"(_\d{1,2})+$", "", stem)        # trailing _1, _2, ...
+    stem = re.sub(r"(_\d{1,2})+$", "", stem)  # trailing _1, _2, ...
     stem = re.sub(r"[_-]{2,}", "_", stem).strip("_-")
     stem = re.sub(r"(?<=[A-Za-z])\d{1,2}$", "", stem)  # voilier2 -> voilier
     return stem or "photo"
@@ -114,7 +116,10 @@ def read_dates(sources: list[Path]) -> dict[Path, str]:
     try:
         result = subprocess.run(
             [
-                "exiftool", "-json", "-dateFormat", "%Y-%m-%d",
+                "exiftool",
+                "-json",
+                "-dateFormat",
+                "%Y-%m-%d",
                 *(f"-{tag}" for tag in DATE_TAGS),
                 *map(str, sources),
             ],
@@ -124,7 +129,9 @@ def read_dates(sources: list[Path]) -> dict[Path, str]:
         )
         records = json.loads(result.stdout or "[]")
     except (FileNotFoundError, json.JSONDecodeError) as error:
-        logging.warning("exiftool unavailable/unreadable (%s); all files undated", error)
+        logging.warning(
+            "exiftool unavailable/unreadable (%s); all files undated", error
+        )
         return {}
 
     dates: dict[Path, str] = {}
@@ -140,9 +147,9 @@ def read_dates(sources: list[Path]) -> dict[Path, str]:
 
 def target_sidecar(sidecar: Path, image: Path, new_image: Path) -> Path:
     """Map a sidecar to the renamed image, preserving its naming form."""
-    if sidecar.name == image.name + ".xmp":          # foo.png.xmp
+    if sidecar.name == image.name + ".xmp":  # foo.png.xmp
         return new_image.parent / (new_image.name + ".xmp")
-    return new_image.with_suffix(".xmp")             # foo.xmp
+    return new_image.with_suffix(".xmp")  # foo.xmp
 
 
 def main() -> int:
@@ -153,7 +160,9 @@ def main() -> int:
     if not folder.is_dir():
         logging.error("Not a directory: %s", folder)
         return 2
-    if args.fallback_date and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", args.fallback_date):
+    if args.fallback_date and not re.fullmatch(
+        r"\d{4}-\d{2}-\d{2}", args.fallback_date
+    ):
         logging.error("--fallback-date must be YYYY-MM-DD")
         return 2
 
@@ -207,7 +216,9 @@ def main() -> int:
     for offset, image in enumerate(ordered):
         index = args.start + offset
         base = clean_original(applied[image][1])
-        name = f"{date_of[image]}__{args.name}_p{index:03d}__{base}{image.suffix.lower()}"
+        name = (
+            f"{date_of[image]}__{args.name}_p{index:03d}__{base}{image.suffix.lower()}"
+        )
         new_image = image.with_name(name)
         if not claim(image, new_image):
             continue
@@ -222,11 +233,15 @@ def main() -> int:
     if undated:
         logging.info(
             "\n%d/%d image(s) had no capture date; used %s.",
-            undated, len(images), fallback,
+            undated,
+            len(images),
+            fallback,
         )
 
     if not args.apply:
-        logging.info("\nDry run. %d rename(s) planned; pass --apply to do it.", len(planned))
+        logging.info(
+            "\nDry run. %d rename(s) planned; pass --apply to do it.", len(planned)
+        )
         return 0
 
     # Two-phase via temp names so a renumber can't collide with a not-yet-moved
