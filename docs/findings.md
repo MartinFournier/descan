@@ -45,5 +45,5 @@ over-split, which is just an extra file to discard.
 ## Dead code removed in the rewrite
 
 `sample_background_colour`, `contour_to_quad`, `points_are_reasonable`,
-`polygon_iou`. `build_detection_mask` still accepts an unused
-`background_threshold` param to keep the `--background-threshold` CLI flag stable.
+`polygon_iou`, and the `--background-threshold` flag / `background_threshold`
+param (a leftover of the v1 colour-subtraction mask).
