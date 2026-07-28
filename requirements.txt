@@ -1,4 +1,0 @@
-# Runtime dependencies (pinned for reproducibility).
-# rename_photos.py also needs the `exiftool` system package on PATH.
-opencv-python==5.0.0.93
-numpy==2.5.1
