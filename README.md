@@ -92,6 +92,7 @@ reported. Re-running is idempotent and re-sequences after adds or deletes.
 ```bash
 pip install -r requirements-dev.txt
 ./scripts/gate.sh            # ruff format --check + ruff check (run before pushing)
+pytest                       # tests
 ```
 
 Detection is classical CV tuned for light prints on a light lid. Tuning and the
