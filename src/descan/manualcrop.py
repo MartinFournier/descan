@@ -26,7 +26,7 @@ deleted and replaced by its ``_pNN`` pieces. Files you skip are left alone.
 
 Example:
     # split a whole scan
-    python manualcrop.py ~/Scans/titi_mariage.png ~/Photos/split
+    python manualcrop.py ~/Scans/scan.png ~/Photos/split
 
     # walk a folder of scans
     python manualcrop.py ~/Scans ~/Photos/split --recursive

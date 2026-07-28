@@ -52,7 +52,7 @@ def parse_arguments() -> argparse.Namespace:
         action="append",
         default=[],
         metavar="TOKEN",
-        help="Remove this token from names, repeatable (e.g. --strip titi).",
+        help="Remove this token from names, repeatable (e.g. --strip nickname).",
     )
     parser.add_argument(
         "--fallback-date",

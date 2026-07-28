@@ -87,13 +87,14 @@ capture-date order. Date comes from each photo's `.xmp` sidecar (or EXIF) via
 `exiftool`, and the sidecar is renamed alongside. The name is cleaned: crop
 suffixes (`_pNN`), sheet markers (`2x/3x`), and trailing `_1` are stripped, so
 `3x_beach_p02` becomes `beach`; `--strip TOKEN` removes extra tokens (e.g.
-`--strip titi`). Undated files use `--fallback-date` (or `0000-00-00`) and are
+`--strip nickname`). Undated files use `--fallback-date` (or `0000-00-00`) and are
 reported. Re-running is idempotent and re-sequences after adds or deletes.
 
 ## Development
 
 ```bash
 pip install -e ".[dev]"
+pre-commit install           # optional: run ruff on every commit
 ./scripts/gate.sh            # ruff format --check + ruff check (run before pushing)
 pytest                       # tests
 ```

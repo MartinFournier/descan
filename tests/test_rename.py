@@ -14,8 +14,8 @@ def test_clean_original_keeps_years_and_leading_numbers():
 
 
 def test_clean_original_strip_tokens():
-    assert R.clean_original("titi_3x_beach_p02", ("titi",)) == "beach"
-    assert R.clean_original("a_titi_b", ("titi",)) == "a_b"
+    assert R.clean_original("nick_3x_beach_p02", ("nick",)) == "beach"
+    assert R.clean_original("a_nick_b", ("nick",)) == "a_b"
 
 
 def test_clean_original_empty_falls_back():
@@ -29,9 +29,9 @@ def test_split_applied_prefix_roundtrip():
 
 
 def test_split_applied_prefix_none_when_not_applied():
-    date, base = R.split_applied_prefix("titi_beach_p01", "Person")
+    date, base = R.split_applied_prefix("nick_beach_p01", "Person")
     assert date is None
-    assert base == "titi_beach_p01"
+    assert base == "nick_beach_p01"
 
 
 def test_target_sidecar_forms(tmp_path):
