@@ -15,10 +15,12 @@ dependencies = ["opencv-python>=5", "numpy"]
 dev = ["ruff==0.16.0", "pytest==8.4.2"]
 
 [project.scripts]
+descan = "descan.cli:main"
 descan-split = "descan.ingest:main"
 descan-trim = "descan.autocrop_review:main"
 descan-crop = "descan.manualcrop:main"
 descan-rename = "descan.rename_photos:main"
+descan-montage = "descan.montage:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

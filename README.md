@@ -22,9 +22,11 @@ python -m venv .venv
 .venv/bin/pip install -e .
 ```
 
-Installs the `descan-split`, `descan-trim`, `descan-crop`, and `descan-rename`
-commands. Python 3.14 (see `.python-version`); the YuNet model ships inside the
-package. `descan-rename` also needs the `exiftool` system package on PATH.
+Installs the `descan-split`, `descan-trim`, `descan-crop`, `descan-rename`, and
+`descan-montage` commands, plus a unified `descan <command>` dispatcher
+(`descan --version`, `descan --help`). Python 3.14 (see `.python-version`); the
+YuNet model ships inside the package. `descan-rename` also needs the `exiftool`
+system package on PATH.
 
 ## `descan-split`
 
@@ -35,7 +37,7 @@ descan-split ~/Scans ~/Out                     # write crops
 
 Each photo is written whole (not cropped or deskewed) as `<scan>_pNN.png`, then
 auto-oriented via face detection. Eyeball the `--debug` overlays before a real
-run.
+run; `descan-montage ~/Out/debug` tiles them into one grid to scan at a glance.
 
 | Flag | Purpose |
 |------|---------|
